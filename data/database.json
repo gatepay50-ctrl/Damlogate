@@ -1,0 +1,219 @@
+{
+  "meetingConfig": {
+    "title": "Executive Strategic Planning & Operations Meeting 2026",
+    "description": "Quarterly all-hands briefing and departmental milestone review with leadership, David Nkwe, and Katlego Mathunywa.",
+    "date": "2026-10-15",
+    "time": "10:00 AM - 12:30 PM (CAT / UTC+2)",
+    "location": "Boardroom Suite A & Virtual Livestream",
+    "isVirtualAvailable": true,
+    "meetingLink": "https://meet.google.com/ex-strat-2026",
+    "notificationEmails": [
+      "dave.nkwe@gmail.com",
+      "Kenny.weeder71@gmail.com"
+    ],
+    "organizerNames": [
+      "David Nkwe",
+      "Katlego Mathunywa"
+    ],
+    "googleFormsUrl": "https://docs.google.com/forms/d/e/1FAIpQLScMeetingRSVP2026/viewform",
+    "eotofUrl": "https://www.eotof.co.za",
+    "damlogateUrl": "https://www.damlogate.co.za",
+    "sharedAppUrl": "https://ais-pre-k2y4juk2g726fowugvfirf-408722122406.europe-west3.run.app",
+    "qrConfig": {
+      "mode": "registration_hub",
+      "qrTitle": "Scan to Register & Access Portals",
+      "qrSubtitle": "Compatible with any cell phone model, camera, or QR scanner app",
+      "badgeText": "Instant RSVP & Partner Portals",
+      "customUrl": "",
+      "googleFormsUrl": "https://docs.google.com/forms/d/e/1FAIpQLScMeetingRSVP2026/viewform",
+      "eotofUrl": "https://www.eotof.co.za",
+      "damlogateUrl": "https://www.damlogate.co.za",
+      "showEotofLink": true,
+      "showDamlogateLink": true,
+      "additionalInfo": "Access www.eotof.co.za and www.damlogate.co.za directly upon scanning.",
+      "fgColor": "#0f172a",
+      "bgColor": "#ffffff",
+      "errorCorrectionLevel": "H",
+      "useSharedDomain": true
+    }
+  },
+  "registrations": [
+    {
+      "id": "reg-1791494150062-j2r2",
+      "fullName": "Nandi Sithole",
+      "email": "nandi@sitholeconsulting.co.za",
+      "phone": "+27 71 555 4321",
+      "organization": "Sithole Strategic Advisory",
+      "role": "",
+      "attendance": "in_person",
+      "dietary": "None",
+      "notes": "",
+      "createdAt": "2026-10-08T21:15:50.062Z",
+      "source": "QR Code Scan (Mobile)",
+      "registeredToVote": "Yes"
+    },
+    {
+      "id": "reg-1",
+      "fullName": "Thabo Mokoena",
+      "email": "thabo.m@africapartners.co",
+      "phone": "+27 82 455 1029",
+      "organization": "Apex Capital Partners",
+      "role": "Managing Director",
+      "attendance": "in_person",
+      "dietary": "None",
+      "notes": "Looking forward to the Q4 targets presentation.",
+      "createdAt": "2026-10-08T16:09:12.349Z",
+      "source": "QR Scan - Mobile",
+      "registeredToVote": "Yes"
+    },
+    {
+      "id": "reg-2",
+      "fullName": "Sarah Jenkins",
+      "email": "sjenkins@globaltech.org",
+      "phone": "+1 415 789 2310",
+      "organization": "GlobalTech Solutions",
+      "role": "Head of Product",
+      "attendance": "virtual",
+      "dietary": "Vegetarian",
+      "notes": "Joining remotely from San Francisco team.",
+      "createdAt": "2026-10-08T17:09:12.349Z",
+      "source": "QR Scan - Mobile",
+      "registeredToVote": "No"
+    },
+    {
+      "id": "reg-3",
+      "fullName": "Lindiwe Dlamini",
+      "email": "ldlamini@innovatehub.co.za",
+      "phone": "+27 71 890 4412",
+      "organization": "Innovate Hub Labs",
+      "role": "Operations Lead",
+      "attendance": "in_person",
+      "dietary": "Halaal",
+      "notes": "Will bring 2 hard copies of the financial audit.",
+      "createdAt": "2026-10-08T18:09:12.349Z",
+      "source": "QR Scan - Mobile",
+      "registeredToVote": "Yes"
+    },
+    {
+      "id": "reg-4",
+      "fullName": "David Vance",
+      "email": "dvance@venturecorp.net",
+      "phone": "+44 20 7946 0192",
+      "organization": "Venture Corporate Advisory",
+      "role": "Senior Consultant",
+      "attendance": "in_person",
+      "dietary": "Gluten-Free",
+      "notes": "Confirmed attending in person.",
+      "createdAt": "2026-10-08T19:09:12.349Z",
+      "source": "QR Scan - Mobile",
+      "registeredToVote": "Yes"
+    },
+    {
+      "id": "reg-5",
+      "fullName": "Kgomotso Phiri",
+      "email": "kphiri@logisticsplus.co.za",
+      "phone": "+27 83 234 9876",
+      "organization": "TransLogistics Southern Africa",
+      "role": "Regional Director",
+      "attendance": "virtual",
+      "dietary": "None",
+      "notes": "Please ensure virtual link recording is shared afterwards.",
+      "createdAt": "2026-10-08T20:09:12.349Z",
+      "source": "QR Scan - Mobile",
+      "registeredToVote": "No"
+    },
+    {
+      "id": "reg-6",
+      "fullName": "Michael Sterling",
+      "email": "msterling@alliancelaw.com",
+      "phone": "+27 82 999 1122",
+      "organization": "Sterling & Associates Law",
+      "role": "Legal Advisor",
+      "attendance": "declined",
+      "dietary": "None",
+      "notes": "Sending apologies due to conflicting high court arbitration.",
+      "createdAt": "2026-10-08T20:39:12.349Z",
+      "source": "QR Scan - Mobile",
+      "registeredToVote": "Yes"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notif-1791494150062",
+      "recipients": [
+        "dave.nkwe@gmail.com",
+        "Kenny.weeder71@gmail.com"
+      ],
+      "subject": "[RSVP Alert] New Registration for Executive Strategic Planning & Operations Meeting 2026: Nandi Sithole (Attending In-Person)",
+      "preview": "Nandi Sithole (Sithole Strategic Advisory) has registered: Attending In-Person. Email: nandi@sitholeconsulting.co.za, Phone: +27 71 555 4321",
+      "attendeeName": "Nandi Sithole",
+      "attendeeEmail": "nandi@sitholeconsulting.co.za",
+      "attendance": "in_person",
+      "sentAt": "2026-10-08T21:15:50.062Z",
+      "status": "delivered"
+    },
+    {
+      "id": "notif-1",
+      "recipients": [
+        "dave.nkwe@gmail.com",
+        "Kenny.weeder71@gmail.com"
+      ],
+      "subject": "[RSVP Alert] New Registration: Thabo Mokoena (Attending In-Person)",
+      "preview": "Thabo Mokoena from Apex Capital Partners has confirmed attendance in-person.",
+      "attendeeName": "Thabo Mokoena",
+      "attendeeEmail": "thabo.m@africapartners.co",
+      "attendance": "in_person",
+      "sentAt": "2026-10-08T16:09:12.349Z",
+      "status": "delivered"
+    },
+    {
+      "id": "notif-2",
+      "recipients": [
+        "dave.nkwe@gmail.com",
+        "Kenny.weeder71@gmail.com"
+      ],
+      "subject": "[RSVP Alert] New Registration: Sarah Jenkins (Attending Virtual)",
+      "preview": "Sarah Jenkins from GlobalTech Solutions has registered for virtual attendance.",
+      "attendeeName": "Sarah Jenkins",
+      "attendeeEmail": "sjenkins@globaltech.org",
+      "attendance": "virtual",
+      "sentAt": "2026-10-08T17:09:12.349Z",
+      "status": "delivered"
+    }
+  ],
+  "users": [
+    {
+      "id": "user-dave",
+      "username": "DaveN",
+      "passwordHash": "Damlo@2026",
+      "fullName": "David Nkwe",
+      "phone": "+27 76 977 5423",
+      "email": "dave.nkwe@gmail.com",
+      "role": "Lead Meeting Host & Executive Director",
+      "avatarInitials": "DN",
+      "lastLogin": "2026-10-08T21:26:35.302Z"
+    },
+    {
+      "id": "user-katlego",
+      "username": "KatlegoM",
+      "passwordHash": "Damlo@1234",
+      "fullName": "Katlego Mathunywa",
+      "phone": "+27 69 497 7018",
+      "email": "Kenny.weeder71@gmail.com",
+      "role": "Co-Organizer & Operations Lead",
+      "avatarInitials": "KM",
+      "lastLogin": "2026-10-08T21:09:20.204Z"
+    },
+    {
+      "id": "user-kmat",
+      "username": "Kmat",
+      "passwordHash": "Data@1234",
+      "fullName": "Katlego Mathunywa",
+      "phone": "+27 69 497 7018",
+      "email": "Kenny.weeder71@gmail.com",
+      "role": "Co-Organizer & Operations Lead",
+      "avatarInitials": "KM",
+      "lastLogin": "2026-10-08T21:26:30.093Z"
+    }
+  ]
+}

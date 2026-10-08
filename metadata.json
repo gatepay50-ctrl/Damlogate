@@ -1,0 +1,6 @@
+{
+  "name": "Live RSVP & Meeting QR Registration Dashboard",
+  "description": "Real-time meeting registration tracking dashboard with scannable QR code, attendee count metrics, and automated email notifications to Dave Nkwe and Kenny Weeder.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
