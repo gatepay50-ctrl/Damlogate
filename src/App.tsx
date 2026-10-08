@@ -22,12 +22,15 @@ import { NotificationModal } from './components/NotificationModal';
 import { MeetingSettingsModal } from './components/MeetingSettingsModal';
 import { MobileSimulatorModal } from './components/MobileSimulatorModal';
 import { QrInformationEditorModal } from './components/QrInformationEditorModal';
+import { QrBarcodeGeneratorModal } from './components/QrBarcodeGeneratorModal';
 import { ReportingModal } from './components/ReportingModal';
 import { LoginModal } from './components/LoginModal';
 import { MeetingCalendar } from './components/MeetingCalendar';
 import { SharedLinkBanner } from './components/SharedLinkBanner';
 import { WhatsAppRobotBadge } from './components/WhatsAppRobotBadge';
 import { playNotificationChime } from './utils/audio';
+import { db, handleFirestoreError, OperationType } from './firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { 
   Calendar as CalendarIcon, 
   Clock, 
@@ -39,10 +42,12 @@ import {
   BarChart3,
   ShieldCheck,
   UserCheck,
-  LogOut
+  LogOut,
+  Barcode,
+  Sparkles
 } from 'lucide-react';
 
-const SHARED_APP_URL = 'https://ais-pre-k2y4juk2g726fowugvfirf-408722122406.europe-west3.run.app';
+const SHARED_APP_URL = 'https://ais-pre-epyop3nnxjxr6smwxasc4e-944514003021.europe-west2.run.app';
 
 export default function App() {
   const [meeting, setMeeting] = useState<MeetingConfig>({
@@ -94,6 +99,7 @@ export default function App() {
     registeredToVoteYes: 0,
     registeredToVoteNo: 0,
     registeredToVoteRate: 0,
+    wardsCount: {},
   });
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
 
@@ -104,6 +110,7 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isMobileSimulatorOpen, setIsMobileSimulatorOpen] = useState(false);
   const [isQrEditorOpen, setIsQrEditorOpen] = useState(false);
+  const [isGeneratorSuiteOpen, setIsGeneratorSuiteOpen] = useState(false);
   const [isReportingModalOpen, setIsReportingModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -118,10 +125,18 @@ export default function App() {
     }
   });
 
-  // Keep track of registration count for real-time sound alert
   const previousCountRef = useRef<number | null>(null);
 
-  // Check URL query parameters: if ?view=register or ?view=portals, open registration/portal view directly
+  // Check if current user is David Nkwe (DaveN)
+  const isDave = Boolean(
+    currentUser && (
+      currentUser.username?.toLowerCase() === 'daven' ||
+      currentUser.fullName?.toLowerCase().includes('david nkwe') ||
+      currentUser.email?.toLowerCase() === 'dave.nkwe@gmail.com'
+    )
+  );
+
+  // Check URL query parameters: if ?view=register or ?view=portals
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const viewParam = params.get('view');
@@ -151,12 +166,12 @@ export default function App() {
           registeredToVoteYes: 0,
           registeredToVoteNo: 0,
           registeredToVoteRate: 0,
+          wardsCount: {},
         });
         if (data.meeting) {
           setMeeting(data.meeting);
         }
 
-        // Check if new registration arrived to trigger chime
         const newCount = (data.registrations || []).length;
         if (previousCountRef.current !== null && newCount > previousCountRef.current) {
           if (soundEnabled) {
@@ -166,7 +181,6 @@ export default function App() {
         previousCountRef.current = newCount;
       }
 
-      // Fetch notification history
       const notifRes = await fetch('/api/notifications');
       if (notifRes.ok) {
         const notifData = await notifRes.json();
@@ -177,12 +191,42 @@ export default function App() {
     }
   };
 
-  // Initial fetch and real-time polling every 2.5 seconds
+  // 1. Initial backend polling
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 2500);
+    const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
   }, [soundEnabled]);
+
+  // 2. Real-time Firebase Firestore onSnapshot listener for instant live updates across devices
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'registrations'), (snapshot) => {
+        if (!snapshot.empty) {
+          const firestoreRegs: Registration[] = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data() as Registration;
+            firestoreRegs.push({ ...data, id: doc.id });
+          });
+          // Merge with current state
+          setRegistrations(prev => {
+            const map = new Map<string, Registration>();
+            prev.forEach(r => map.set(r.id, r));
+            firestoreRegs.forEach(r => map.set(r.id, r));
+            return Array.from(map.values()).sort((a, b) => 
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+          });
+        }
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, 'registrations');
+      });
+
+      return () => unsub();
+    } catch (e) {
+      console.debug('Firestore listener initialized with fallback');
+    }
+  }, []);
 
   const handleDeleteAttendee = async (id: string) => {
     try {
@@ -269,7 +313,7 @@ export default function App() {
     }
   };
 
-  // If viewing standalone attendee form (e.g., when scanned on any cell phone model)
+  // If viewing standalone attendee form (e.g. mobile scan)
   if (viewMode === 'form') {
     return (
       <div className="min-h-screen bg-slate-950 text-white selection:bg-purple-600 selection:text-white">
@@ -299,6 +343,7 @@ export default function App() {
           onOpenNotifications={() => setIsNotificationModalOpen(true)}
           onOpenSettings={() => setIsSettingsModalOpen(true)}
           onOpenQrEditor={() => setIsQrEditorOpen(true)}
+          onOpenGeneratorSuite={() => setIsGeneratorSuiteOpen(true)}
           onOpenReporting={() => setIsReportingModalOpen(true)}
           onOpenLogin={() => setIsLoginModalOpen(true)}
           onOpenRegistrationForm={() => setViewMode('form')}
@@ -322,7 +367,7 @@ export default function App() {
               }}
               className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 cursor-pointer"
             >
-              &larr; Back to Meeting Dashboard
+              &larr; Back to Damlogate Dashboard
             </button>
             <span className="text-xs text-slate-400">
               Synchronized meeting dates &bull; CAT / UTC+2
@@ -347,6 +392,7 @@ export default function App() {
           onOpenNotifications={() => setIsNotificationModalOpen(true)}
           onOpenSettings={() => setIsSettingsModalOpen(true)}
           onOpenQrEditor={() => setIsQrEditorOpen(true)}
+          onOpenGeneratorSuite={() => setIsGeneratorSuiteOpen(true)}
           onOpenReporting={() => setIsReportingModalOpen(true)}
           onOpenLogin={() => setIsLoginModalOpen(true)}
           onOpenRegistrationForm={() => setViewMode('form')}
@@ -370,7 +416,7 @@ export default function App() {
               }}
               className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
             >
-              &larr; Back to Meeting Dashboard
+              &larr; Back to Damlogate Dashboard
             </button>
             <span className="text-xs text-slate-400">Organizer Landing Portal</span>
           </div>
@@ -404,6 +450,7 @@ export default function App() {
         onOpenNotifications={() => setIsNotificationModalOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
         onOpenQrEditor={() => setIsQrEditorOpen(true)}
+        onOpenGeneratorSuite={() => setIsGeneratorSuiteOpen(true)}
         onOpenReporting={() => setIsReportingModalOpen(true)}
         onOpenLogin={() => setIsLoginModalOpen(true)}
         onOpenRegistrationForm={() => setViewMode('form')}
@@ -426,11 +473,11 @@ export default function App() {
             <div className="max-w-3xl space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  Meeting Organizer Dashboard
+                  Damlogate QR Code Generator
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Persistent Storage Active
+                  Google Cloud Firestore Active
                 </span>
                 {currentUser && (
                   <div className="flex items-center gap-1.5">
@@ -474,11 +521,18 @@ export default function App() {
             {/* Quick Hero Actions */}
             <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0">
               <button
+                onClick={() => setIsGeneratorSuiteOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer"
+              >
+                <Barcode className="w-4 h-4 text-white" />
+                <span>QR &amp; Barcode Generator</span>
+              </button>
+              <button
                 onClick={() => setIsReportingModalOpen(true)}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer"
               >
                 <BarChart3 className="w-4 h-4" />
-                <span>Executive Reports &amp; Audit</span>
+                <span>Executive Reports &amp; Ward Audit</span>
               </button>
               <button
                 onClick={() => setViewMode('calendar')}
@@ -486,13 +540,6 @@ export default function App() {
               >
                 <CalendarIcon className="w-4 h-4" />
                 <span>Event Calendar</span>
-              </button>
-              <button
-                onClick={() => setIsQrEditorOpen(true)}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer"
-              >
-                <Edit3 className="w-4 h-4" />
-                <span>Edit QR Information</span>
               </button>
               <button
                 onClick={() => setIsStageModeOpen(true)}
@@ -535,25 +582,27 @@ export default function App() {
           </div>
         </div>
 
-        {/* Live Shared URL Banner with Persistent Storage Indicator */}
-        <SharedLinkBanner
-          sharedUrl={meeting.sharedAppUrl || SHARED_APP_URL}
-          totalSaved={registrations.length}
-          onOpenReporting={() => setIsReportingModalOpen(true)}
-        />
+        {/* Live Shared URL Banner with Persistent Storage Indicator (Hidden for David Nkwe) */}
+        {!isDave && (
+          <SharedLinkBanner
+            sharedUrl={meeting.sharedAppUrl || SHARED_APP_URL}
+            totalSaved={registrations.length}
+            onOpenReporting={() => setIsReportingModalOpen(true)}
+          />
+        )}
 
-        {/* Autonomous WhatsApp Background Automation Robot */}
-        <WhatsAppRobotBadge />
+        {/* Autonomous WhatsApp Background Automation Robot (Hidden for David Nkwe) */}
+        {!isDave && <WhatsAppRobotBadge />}
 
         {/* Real-time RSVP Metrics Cards */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Attendance Counters &amp; Analytics
+              Attendance, Voter Status &amp; Ward Analytics
             </h2>
-            <span className="text-[11px] text-slate-500">Live RSVP Counts</span>
+            <span className="text-[11px] text-slate-500">Live Firebase Synchronization</span>
           </div>
-          <StatsCards stats={stats} />
+          <StatsCards stats={stats} hideDeclined={isDave} />
         </div>
 
         {/* Main Grid: QR Code Card & Notification Status */}
@@ -567,7 +616,7 @@ export default function App() {
             />
           </div>
 
-          {/* Side Panel: Notification routing to Dave & Kenny + Quick actions */}
+          {/* Side Panel: Designated Organizers & Quick actions */}
           <div className="lg:col-span-5 flex flex-col justify-between gap-4 rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-xl">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -576,7 +625,7 @@ export default function App() {
                   Authorized Custodians &amp; Alerts
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  Live
+                  Firebase Active
                 </span>
               </div>
 
@@ -585,7 +634,7 @@ export default function App() {
                   Designated Organizers
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Notifications routed and administrative credentials provisioned for:
+                  Notifications routed and administrative credentials active for:
                 </p>
               </div>
 
@@ -613,7 +662,7 @@ export default function App() {
                     <div>
                       <div className="text-xs font-bold text-white">Katlego Mathunywa</div>
                       <div className="text-[11px] text-slate-400 font-mono">+27 69 497 7018 &bull; Kenny.weeder71@gmail.com</div>
-                      <div className="text-[10px] text-purple-400 font-mono mt-0.5">User ID: KatlegoM</div>
+                      <div className="text-[10px] text-purple-400 font-mono mt-0.5">User ID: Kmat (KatlegoM)</div>
                     </div>
                   </div>
                   <span className="text-[10px] text-emerald-400 font-semibold">Ready</span>
@@ -651,17 +700,18 @@ export default function App() {
             {/* Bottom Actions inside Panel */}
             <div className="pt-4 border-t border-slate-800 flex items-center gap-2">
               <button
+                onClick={() => setIsGeneratorSuiteOpen(true)}
+                className="flex-1 py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Barcode className="w-3.5 h-3.5" />
+                <span>Create QR/Barcode</span>
+              </button>
+              <button
                 onClick={() => setIsReportingModalOpen(true)}
                 className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
               >
                 <BarChart3 className="w-3.5 h-3.5" />
                 <span>Audit Reports</span>
-              </button>
-              <button
-                onClick={() => setIsNotificationModalOpen(true)}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                <span>Alert Logs</span>
               </button>
             </div>
           </div>
@@ -675,21 +725,23 @@ export default function App() {
           />
         </div>
 
-        {/* Full Attendees Live Roster */}
-        <div>
-          <AttendeeList
-            registrations={registrations}
-            onDeleteAttendee={handleDeleteAttendee}
-            onRefreshData={fetchData}
-          />
-        </div>
+        {/* Full Attendees Live Roster (Hidden for David Nkwe) */}
+        {!isDave && (
+          <div>
+            <AttendeeList
+              registrations={registrations}
+              onDeleteAttendee={handleDeleteAttendee}
+              onRefreshData={fetchData}
+            />
+          </div>
+        )}
       </main>
 
       {/* Footer */}
       <footer className="border-t border-slate-800/80 bg-slate-950 py-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div>
-            Meeting RSVP &amp; QR Registration System &bull; Persistent Storage at data/database.json
+            Damlogate QR Code Generator &bull; Google Cloud Firestore &bull; Persistent Storage
           </div>
           <div className="flex items-center gap-3">
             <a href={meeting.eotofUrl || 'https://www.eotof.co.za'} target="_blank" rel="noopener noreferrer" className="hover:underline text-indigo-400">
@@ -714,6 +766,13 @@ export default function App() {
           setIsStageModeOpen(false);
           setIsQrEditorOpen(true);
         }}
+      />
+
+      <QrBarcodeGeneratorModal
+        isOpen={isGeneratorSuiteOpen}
+        onClose={() => setIsGeneratorSuiteOpen(false)}
+        meeting={meeting}
+        currentUser={currentUser}
       />
 
       <QrInformationEditorModal

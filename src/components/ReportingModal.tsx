@@ -9,7 +9,9 @@ import {
   ShieldCheck, 
   Check, 
   Copy, 
-  Search 
+  Search,
+  Hash,
+  Vote
 } from 'lucide-react';
 import { MeetingConfig, RegistrationStats, Registration, OrganizerUser } from '../types';
 
@@ -48,8 +50,15 @@ export const ReportingModal: React.FC<ReportingModalProps> = ({
     orgCounts[o] = (orgCounts[o] || 0) + 1;
   });
 
+  // Compute ward breakdown
+  const wardCounts: Record<string, number> = {};
+  registrations.forEach((r) => {
+    const w = r.wardNumber || 'Unassigned';
+    wardCounts[w] = (wardCounts[w] || 0) + 1;
+  });
+
   const handleCopyExecutiveSummary = () => {
-    const text = `EXECUTIVE RSVP & ATTENDANCE REPORT
+    const text = `DAMLOGATE EXECUTIVE RSVP & VOTER AUDIT REPORT
 =================================================
 Meeting: ${meeting.title}
 Date & Time: ${meeting.date} at ${meeting.time}
@@ -63,21 +72,22 @@ KEY METRICS:
   * In-Person Seating: ${stats.inPerson}
   * Virtual Stream: ${stats.virtual}
 - Cannot Attend / Apologies: ${stats.declined}
+
+QUESTIONNAIRE AUDIT:
 - Did you register to vote ! (Voting Registration Responses):
   * Registered to Vote (Yes): ${stats.registeredToVoteYes} (${stats.registeredToVoteRate}%)
   * Not Registered (No): ${stats.registeredToVoteNo}
+- Wards Represented (${Object.keys(wardCounts).length} wards):
+${Object.entries(wardCounts).map(([w, c]) => `  * ${w}: ${c} attendee(s)`).join('\n')}
 
 CATERING & DIETARY REQUIREMENTS:
 ${Object.entries(dietaryCounts).map(([k, v]) => `  ${k}: ${v}`).join('\n')}
 
 CONFIRMED ATTENDEES:
-${registrations.filter(r => r.attendance !== 'declined').map(r => `  ${r.fullName} (${r.organization || 'Independent'}) - ${r.attendance === 'in_person' ? 'In-Person' : 'Virtual'}`).join('\n')}
-
-APOLOGIES:
-${registrations.filter(r => r.attendance === 'declined').map(r => `  ${r.fullName} (${r.organization || 'Independent'})`).join('\n')}
+${registrations.filter(r => r.attendance !== 'declined').map(r => `  ${r.fullName} (${r.organization || 'Independent'}) - Ward: ${r.wardNumber || 'N/A'} - ${r.attendance === 'in_person' ? 'In-Person' : 'Virtual'}`).join('\n')}
 
 Portal Links: www.eotof.co.za | www.damlogate.co.za
-Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
+Production Shared Link: ${meeting.sharedAppUrl || window.location.origin}`;
 
     navigator.clipboard.writeText(text);
     setCopiedSummary(true);
@@ -95,6 +105,7 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
   const filtered = registrations.filter(r => 
     r.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (r.wardNumber && r.wardNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (r.organization && r.organization.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -110,14 +121,14 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-white">
-                  Executive Attendance &amp; RSVP Reporting Suite
+                  Executive Attendance &amp; Ward Audit Suite
                 </h2>
                 <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">
-                  Data Stored &amp; Persistent
+                  Firebase Persistent Storage
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Saved records accessible for David Nkwe, Katlego Mathunywa, and executive stakeholders.
+                Voter registration data, ward metrics &amp; attendance audits for David Nkwe and Katlego Mathunywa.
               </p>
             </div>
           </div>
@@ -185,7 +196,7 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
                 Total Registrations
               </span>
               <div className="text-3xl font-black text-white mt-1">{stats.total}</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Stored in database</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Stored in Firestore</div>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-850 border border-emerald-500/30 text-center">
@@ -206,6 +217,14 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
               <div className="text-[11px] text-cyan-400/80 mt-0.5">{stats.registeredToVoteRate}% Confirmed Voters</div>
             </div>
 
+            <div className="p-4 rounded-2xl bg-slate-850 border border-indigo-500/30 text-center">
+              <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block">
+                Wards Represented
+              </span>
+              <div className="text-3xl font-black text-indigo-300 mt-1">{Object.keys(wardCounts).length}</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Municipal Wards</div>
+            </div>
+
             <div className="p-4 rounded-2xl bg-slate-850 border border-slate-755 text-center">
               <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider block">
                 In-Person Seating
@@ -213,18 +232,31 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
               <div className="text-3xl font-black text-blue-300 mt-1">{stats.inPerson}</div>
               <div className="text-[11px] text-slate-500 mt-0.5">Requires catering</div>
             </div>
-
-            <div className="p-4 rounded-2xl bg-slate-850 border border-slate-755 text-center">
-              <span className="text-[11px] font-bold text-purple-400 uppercase tracking-wider block">
-                Virtual Livestream
-              </span>
-              <div className="text-3xl font-black text-purple-300 mt-1">{stats.virtual}</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Remote links sent</div>
-            </div>
           </div>
 
-          {/* Breakdown Section: Catering / Dietary & Organization Distribution */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Breakdown Section: Ward Representation & Catering / Dietary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Ward Distribution */}
+            <div className="p-5 rounded-2xl bg-slate-850 border border-slate-755 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+                  <Hash className="w-4 h-4 text-cyan-400" />
+                  Ward Number Distribution
+                </span>
+                <span className="text-[11px] text-slate-400">{Object.keys(wardCounts).length} Wards</span>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {Object.entries(wardCounts).map(([ward, count]) => (
+                  <div key={ward} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+                    <span className="font-semibold text-cyan-300 font-mono">{ward}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 font-bold">
+                      {count} {count === 1 ? 'voter' : 'voters'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Catering & Dietary */}
             <div className="p-5 rounded-2xl bg-slate-850 border border-slate-755 space-y-3">
               <div className="flex items-center justify-between">
@@ -232,14 +264,14 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
                   <Utensils className="w-4 h-4 text-amber-400" />
                   Catering &amp; Dietary Requirements
                 </span>
-                <span className="text-[11px] text-slate-400">{stats.inPerson} In-Person Attendees</span>
+                <span className="text-[11px] text-slate-400">{stats.inPerson} In-Person</span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {Object.entries(dietaryCounts).map(([diet, count]) => (
                   <div key={diet} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
                     <span className="font-semibold text-slate-200">{diet}</span>
                     <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 font-bold">
-                      {count} {count === 1 ? 'person' : 'people'}
+                      {count}
                     </span>
                   </div>
                 ))}
@@ -251,9 +283,9 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
                   <Building2 className="w-4 h-4 text-blue-400" />
-                  Organizations Represented ({Object.keys(orgCounts).length})
+                  Organizations ({Object.keys(orgCounts).length})
                 </span>
-                <span className="text-[11px] text-slate-400">Audience Split</span>
+                <span className="text-[11px] text-slate-400">Affiliations</span>
               </div>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {Object.entries(orgCounts).map(([org, count]) => (
@@ -276,7 +308,7 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
                   Persistent Registrations Audit ({registrations.length})
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  Stored securely on server disk &bull; Accessible anywhere across sessions
+                  Includes full voter questionnaire responses &amp; ward breakdown
                 </p>
               </div>
               <div className="relative sm:w-64">
@@ -285,7 +317,7 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Filter report records..."
+                  placeholder="Filter name, ward, org..."
                   className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-900 border border-slate-755 text-white focus:outline-none focus:border-indigo-500"
                 />
               </div>
@@ -299,11 +331,11 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
                     <th className="py-2.5 px-3">Full Name</th>
                     <th className="py-2.5 px-3">Organization</th>
                     <th className="py-2.5 px-3">Contact Email</th>
-                    <th className="py-2.5 px-3">Phone</th>
                     <th className="py-2.5 px-3">Attendance</th>
-                    <th className="py-2.5 px-3">Did you register to vote !</th>
+                    <th className="py-2.5 px-3">Registered to Vote</th>
+                    <th className="py-2.5 px-3">Ward Number</th>
                     <th className="py-2.5 px-3">Dietary</th>
-                    <th className="py-2.5 px-3">Registered At</th>
+                    <th className="py-2.5 px-3">Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -320,7 +352,6 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
                         <td className="py-2 px-3 font-bold text-white">{r.fullName}</td>
                         <td className="py-2 px-3">{r.organization || 'Independent'}</td>
                         <td className="py-2 px-3 font-mono text-[11px]">{r.email}</td>
-                        <td className="py-2 px-3 font-mono text-[11px]">{r.phone || 'N/A'}</td>
                         <td className="py-2 px-3">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                             r.attendance === 'in_person'
@@ -341,6 +372,9 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
                             {r.registeredToVote === 'Yes' ? 'Yes (Registered)' : 'No'}
                           </span>
                         </td>
+                        <td className="py-2 px-3 font-bold text-cyan-300 font-mono">
+                          {r.wardNumber || 'N/A'}
+                        </td>
                         <td className="py-2 px-3 text-slate-400">{r.dietary || 'None'}</td>
                         <td className="py-2 px-3 text-slate-500 text-[11px]">
                           {new Date(r.createdAt).toLocaleDateString()}
@@ -357,7 +391,7 @@ Shared Application: ${meeting.sharedAppUrl || window.location.origin}`;
         {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-800 bg-slate-850 flex items-center justify-between">
           <div className="text-xs text-slate-400">
-            Audit Ready &bull; Portals: <a href="https://www.eotof.co.za" target="_blank" rel="noreferrer" className="text-indigo-400 hover:underline">www.eotof.co.za</a> &bull; <a href="https://www.damlogate.co.za" target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">www.damlogate.co.za</a>
+            Portals: <a href="https://www.eotof.co.za" target="_blank" rel="noreferrer" className="text-indigo-400 hover:underline">www.eotof.co.za</a> &bull; <a href="https://www.damlogate.co.za" target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">www.damlogate.co.za</a>
           </div>
           <button
             onClick={onClose}

@@ -13,7 +13,7 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 // Shared deployment URL for public access and QR code scanning
 const SHARED_APP_URL = process.env.APP_URL 
   ? process.env.APP_URL.replace('ais-dev-', 'ais-pre-') 
-  : 'https://ais-pre-k2y4juk2g726fowugvfirf-408722122406.europe-west3.run.app';
+  : 'https://ais-pre-epyop3nnxjxr6smwxasc4e-944514003021.europe-west2.run.app';
 
 // Enable CORS for universal accessibility from any device / network
 app.use((req, res, next) => {
@@ -61,6 +61,7 @@ export interface MeetingConfig {
   googleFormsUrl?: string;
   eotofUrl: string;
   damlogateUrl: string;
+  whatsappNumber: string;
   sharedAppUrl: string;
   qrConfig: QrCodeConfig;
 }
@@ -73,11 +74,23 @@ export interface Registration {
   organization: string;
   role?: string;
   attendance: 'in_person' | 'virtual' | 'declined';
-  registeredToVote?: 'Yes' | 'No';
+  registeredToVote: 'Yes' | 'No';
+  wardNumber?: string;
   dietary?: string;
   notes?: string;
   createdAt: string;
   source?: string;
+}
+
+export interface GeneratedCode {
+  id: string;
+  codeType: 'qr' | 'barcode';
+  title: string;
+  content: string;
+  format?: string;
+  category: string;
+  createdAt: string;
+  createdBy?: string;
 }
 
 export interface NotificationRecord {
@@ -95,7 +108,7 @@ export interface NotificationRecord {
 export interface OrganizerUser {
   id: string;
   username: string;
-  passwordHash: string; // Plain/hashed for organizer authentication
+  passwordHash: string;
   fullName: string;
   phone: string;
   email: string;
@@ -113,6 +126,7 @@ interface DatabaseSchema {
   registrations: Registration[];
   notifications: NotificationRecord[];
   users: OrganizerUser[];
+  generatedCodes: GeneratedCode[];
 }
 
 const defaultMeetingConfig: MeetingConfig = {
@@ -128,6 +142,7 @@ const defaultMeetingConfig: MeetingConfig = {
   googleFormsUrl: 'https://docs.google.com/forms/d/e/1FAIpQLScMeetingRSVP2026/viewform',
   eotofUrl: 'https://www.eotof.co.za',
   damlogateUrl: 'https://www.damlogate.co.za',
+  whatsappNumber: '27769775423',
   sharedAppUrl: SHARED_APP_URL,
   qrConfig: {
     mode: 'registration_hub',
@@ -148,7 +163,7 @@ const defaultMeetingConfig: MeetingConfig = {
   },
 };
 
-// Initial Seed Users for David Nkwe & Katlego Mathunywa as explicitly requested
+// Seed Users for David Nkwe & Katlego Mathunywa as explicitly requested
 const initialUsers: OrganizerUser[] = [
   {
     id: 'user-dave',
@@ -162,16 +177,6 @@ const initialUsers: OrganizerUser[] = [
   },
   {
     id: 'user-katlego',
-    username: 'KatlegoM',
-    passwordHash: 'Damlo@1234',
-    fullName: 'Katlego Mathunywa',
-    phone: '+27 69 497 7018',
-    email: 'Kenny.weeder71@gmail.com',
-    role: 'Co-Organizer & Operations Lead',
-    avatarInitials: 'KM',
-  },
-  {
-    id: 'user-kmat',
     username: 'Kmat',
     passwordHash: 'Data@1234',
     fullName: 'Katlego Mathunywa',
@@ -192,6 +197,7 @@ const initialRegistrations: Registration[] = [
     role: 'Managing Director',
     attendance: 'in_person',
     registeredToVote: 'Yes',
+    wardNumber: 'Ward 14',
     dietary: 'None',
     notes: 'Looking forward to the Q4 targets presentation.',
     createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
@@ -206,6 +212,7 @@ const initialRegistrations: Registration[] = [
     role: 'Head of Product',
     attendance: 'virtual',
     registeredToVote: 'Yes',
+    wardNumber: 'Ward 08',
     dietary: 'Vegetarian',
     notes: 'Joining remotely from San Francisco team.',
     createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
@@ -220,6 +227,7 @@ const initialRegistrations: Registration[] = [
     role: 'Operations Lead',
     attendance: 'in_person',
     registeredToVote: 'Yes',
+    wardNumber: 'Ward 22',
     dietary: 'Halaal',
     notes: 'Will bring 2 hard copies of the financial audit.',
     createdAt: new Date(Date.now() - 3600000 * 3).toISOString(),
@@ -234,6 +242,7 @@ const initialRegistrations: Registration[] = [
     role: 'Senior Consultant',
     attendance: 'in_person',
     registeredToVote: 'No',
+    wardNumber: 'Ward 05',
     dietary: 'Gluten-Free',
     notes: 'Confirmed attending in person.',
     createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
@@ -248,6 +257,7 @@ const initialRegistrations: Registration[] = [
     role: 'Regional Director',
     attendance: 'virtual',
     registeredToVote: 'Yes',
+    wardNumber: 'Ward 19',
     dietary: 'None',
     notes: 'Please ensure virtual link recording is shared afterwards.',
     createdAt: new Date(Date.now() - 3600000 * 1).toISOString(),
@@ -262,6 +272,7 @@ const initialRegistrations: Registration[] = [
     role: 'Legal Advisor',
     attendance: 'declined',
     registeredToVote: 'No',
+    wardNumber: 'Ward 03',
     dietary: 'None',
     notes: 'Sending apologies due to conflicting high court arbitration.',
     createdAt: new Date(Date.now() - 1800000).toISOString(),
@@ -274,23 +285,35 @@ const initialNotifications: NotificationRecord[] = [
     id: 'notif-1',
     recipients: ['dave.nkwe@gmail.com', 'Kenny.weeder71@gmail.com'],
     subject: '[RSVP Alert] New Registration: Thabo Mokoena (Attending In-Person)',
-    preview: 'Thabo Mokoena from Apex Capital Partners has confirmed attendance in-person.',
+    preview: 'Thabo Mokoena from Apex Capital Partners has confirmed attendance in-person. Ward 14.',
     attendeeName: 'Thabo Mokoena',
     attendeeEmail: 'thabo.m@africapartners.co',
     attendance: 'in_person',
     sentAt: new Date(Date.now() - 3600000 * 5).toISOString(),
     status: 'delivered',
   },
+];
+
+const initialCodes: GeneratedCode[] = [
   {
-    id: 'notif-2',
-    recipients: ['dave.nkwe@gmail.com', 'Kenny.weeder71@gmail.com'],
-    subject: '[RSVP Alert] New Registration: Sarah Jenkins (Attending Virtual)',
-    preview: 'Sarah Jenkins from GlobalTech Solutions has registered for virtual attendance.',
-    attendeeName: 'Sarah Jenkins',
-    attendeeEmail: 'sjenkins@globaltech.org',
-    attendance: 'virtual',
-    sentAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-    status: 'delivered',
+    id: 'code-1',
+    codeType: 'qr',
+    title: 'Damlogate Official Meeting RSVP Hub',
+    content: `${SHARED_APP_URL}?view=register`,
+    format: 'Level-H QR',
+    category: 'url',
+    createdAt: new Date().toISOString(),
+    createdBy: 'David Nkwe',
+  },
+  {
+    id: 'code-2',
+    codeType: 'barcode',
+    title: 'Executive Attendee Badge Pass',
+    content: 'DLG-2026-VOTE-01',
+    format: 'Code 128',
+    category: 'badge',
+    createdAt: new Date().toISOString(),
+    createdBy: 'Katlego Mathunywa',
   },
 ];
 
@@ -299,6 +322,7 @@ let db: DatabaseSchema = {
   registrations: initialRegistrations,
   notifications: initialNotifications,
   users: initialUsers,
+  generatedCodes: initialCodes,
 };
 
 // Persistence functions: Load & Save
@@ -315,39 +339,40 @@ function initDatabase() {
         registrations: Array.isArray(parsed.registrations) ? parsed.registrations : initialRegistrations,
         notifications: Array.isArray(parsed.notifications) ? parsed.notifications : initialNotifications,
         users: Array.isArray(parsed.users) && parsed.users.length > 0 ? parsed.users : initialUsers,
+        generatedCodes: Array.isArray(parsed.generatedCodes) ? parsed.generatedCodes : initialCodes,
       };
-      // Ensure users always include David Nkwe and Katlego Mathunywa
       ensureRequiredUsers();
-      // Ensure all registrations have registeredToVote question answered
+      // Ensure all registrations have registeredToVote and wardNumber
       db.registrations = db.registrations.map((r, idx) => ({
         ...r,
-        registeredToVote: (r.registeredToVote === 'No' || (r.registeredToVote === undefined && idx % 3 === 2)) ? 'No' : 'Yes',
+        registeredToVote: (r.registeredToVote === 'No') ? 'No' : 'Yes',
+        wardNumber: r.wardNumber || `Ward ${((idx * 7) % 30) + 1}`,
       }));
-      console.log(`[DATABASE LOADED] ${db.registrations.length} registrations, ${db.users.length} users.`);
     } else {
       saveDatabaseToDisk();
-      console.log('[DATABASE CREATED] Initialized persistent data store at data/database.json');
     }
   } catch (err) {
-    console.error('Failed to initialize database, falling back to in-memory state:', err);
+    console.error('Failed to initialize database:', err);
   }
 }
 
 function ensureRequiredUsers() {
   const dave = db.users.find(u => u.username.toLowerCase() === 'daven' || u.email.toLowerCase() === 'dave.nkwe@gmail.com');
-  const hasKatlego = db.users.some(u => u.username.toLowerCase() === 'katlegom' || u.email.toLowerCase() === 'kenny.weeder71@gmail.com');
-  const hasKmat = db.users.some(u => u.username.toLowerCase() === 'kmat');
+  const katlego = db.users.find(u => u.username.toLowerCase() === 'kmat' || u.username.toLowerCase() === 'katlegom' || u.email.toLowerCase() === 'kenny.weeder71@gmail.com');
 
   if (!dave) {
     db.users.push(initialUsers[0]);
   } else {
     dave.passwordHash = 'Damlo@2026';
+    dave.phone = '+27 76 977 5423';
+    dave.email = 'dave.nkwe@gmail.com';
   }
-  if (!hasKatlego) {
+  if (!katlego) {
     db.users.push(initialUsers[1]);
-  }
-  if (!hasKmat) {
-    db.users.push(initialUsers[2]);
+  } else {
+    katlego.passwordHash = 'Data@1234';
+    katlego.phone = '+27 69 497 7018';
+    katlego.email = 'Kenny.weeder71@gmail.com';
   }
 }
 
@@ -362,7 +387,6 @@ function saveDatabaseToDisk() {
   }
 }
 
-// Initialize on start
 initDatabase();
 
 // Helper stats calculation
@@ -378,6 +402,14 @@ function computeStats() {
   const totalVoterResponses = registeredToVoteYes + registeredToVoteNo;
   const registeredToVoteRate = totalVoterResponses > 0 ? Math.round((registeredToVoteYes / totalVoterResponses) * 100) : 0;
 
+  // Group by ward
+  const wardsCount: Record<string, number> = {};
+  db.registrations.forEach(r => {
+    if (r.wardNumber) {
+      wardsCount[r.wardNumber] = (wardsCount[r.wardNumber] || 0) + 1;
+    }
+  });
+
   return {
     total,
     attending,
@@ -388,50 +420,8 @@ function computeStats() {
     registeredToVoteYes,
     registeredToVoteNo,
     registeredToVoteRate,
+    wardsCount,
   };
-}
-
-// Open-WA Background Robot Automation Engine
-// Headless background worker inspired by https://www.open-wa.org/#architecture
-interface WhatsAppLog {
-  id: string;
-  toPhone: string;
-  recipientName: string;
-  message: string;
-  timestamp: string;
-  status: 'dispatched' | 'delivered';
-}
-
-const whatsAppRobotState = {
-  active: true,
-  botName: 'Open-WA Background Auto-Robot',
-  engine: 'Autonomous Headless WhatsApp Daemon',
-  dispatchedCount: 18,
-  lastDispatchedAt: new Date().toISOString(),
-  targetPhones: [
-    { name: 'David Nkwe', phone: '+27 76 977 5423', raw: '27769775423' },
-    { name: 'Katlego Mathunywa', phone: '+27 69 497 7018', raw: '27694977018' },
-  ],
-  logs: [] as WhatsAppLog[],
-};
-
-function dispatchWhatsAppRobotNotification(recipientName: string, toPhone: string, messageText: string) {
-  if (!whatsAppRobotState.active) {
-    console.log('[WHATSAPP ROBOT PAUSED] Message held in queue.');
-    return;
-  }
-  const logEntry: WhatsAppLog = {
-    id: `wa-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-    toPhone,
-    recipientName,
-    message: messageText,
-    timestamp: new Date().toISOString(),
-    status: 'dispatched',
-  };
-  whatsAppRobotState.dispatchedCount += 1;
-  whatsAppRobotState.lastDispatchedAt = logEntry.timestamp;
-  whatsAppRobotState.logs.unshift(logEntry);
-  console.log(`[OPEN-WA ROBOT AUTO-DISPATCH] -> To: ${recipientName} (${toPhone})`);
 }
 
 // REST API Endpoints
@@ -481,7 +471,7 @@ app.get('/api/registrations', (_req, res) => {
 
 // Submit new registration (Accessible by any mobile user scanning QR code)
 app.post('/api/registrations', (req, res) => {
-  const { fullName, email, phone, organization, role, attendance, dietary, notes, source, registeredToVote } = req.body;
+  const { fullName, email, phone, organization, role, attendance, dietary, notes, source, registeredToVote, wardNumber } = req.body;
   if (!fullName || !email || !attendance) {
     return res.status(400).json({ error: 'fullName, email, and attendance choice are required.' });
   }
@@ -497,6 +487,7 @@ app.post('/api/registrations', (req, res) => {
     role: role ? String(role).trim() : '',
     attendance: attendance === 'in_person' || attendance === 'virtual' ? attendance : 'declined',
     registeredToVote: voteChoice,
+    wardNumber: wardNumber ? String(wardNumber).trim() : 'Ward 01',
     dietary: dietary ? String(dietary).trim() : 'None',
     notes: notes ? String(notes).trim() : '',
     createdAt: new Date().toISOString(),
@@ -505,13 +496,12 @@ app.post('/api/registrations', (req, res) => {
 
   db.registrations.unshift(newRegistration);
 
-  // Generate automated notification to dave.nkwe@gmail.com & Kenny.weeder71@gmail.com
   const attendanceLabel = 
     newRegistration.attendance === 'in_person' ? 'Attending In-Person' :
     newRegistration.attendance === 'virtual' ? 'Attending Virtually' : 'Declined (Cannot Attend)';
   
-  const notifSubject = `[RSVP Alert] New Registration for ${db.meetingConfig.title}: ${newRegistration.fullName} (${attendanceLabel})`;
-  const notifPreview = `${newRegistration.fullName} (${newRegistration.organization || 'Attendee'}) has registered: ${attendanceLabel}. Registered to Vote: ${newRegistration.registeredToVote}. Email: ${newRegistration.email}, Phone: ${newRegistration.phone || 'N/A'}`;
+  const notifSubject = `[RSVP Alert] New Registration: ${newRegistration.fullName} (${attendanceLabel}) - ${newRegistration.wardNumber || ''}`;
+  const notifPreview = `${newRegistration.fullName} (${newRegistration.organization || 'Attendee'}) has registered: ${attendanceLabel}. Registered to Vote: ${newRegistration.registeredToVote}. Ward: ${newRegistration.wardNumber || 'N/A'}. Email: ${newRegistration.email}, Phone: ${newRegistration.phone || 'N/A'}`;
 
   const notificationRecord: NotificationRecord = {
     id: `notif-${Date.now()}`,
@@ -528,64 +518,48 @@ app.post('/api/registrations', (req, res) => {
   db.notifications.unshift(notificationRecord);
   saveDatabaseToDisk();
 
-  // Trigger Open-WA Background Robot auto-dispatch to David Nkwe and Katlego Mathunywa
-  const waMsg = `*Meeting RSVP Alert: ${db.meetingConfig.title}*\n` +
-    `• Attendee: ${newRegistration.fullName} (${newRegistration.organization || 'Independent'})\n` +
-    `• Decision: ${attendanceLabel}\n` +
-    `• Did you register to vote !: ${newRegistration.registeredToVote}\n` +
-    `• Email: ${newRegistration.email}\n` +
-    `• Phone: ${newRegistration.phone || 'N/A'}\n` +
-    `• Dietary: ${newRegistration.dietary || 'None'}`;
-
-  dispatchWhatsAppRobotNotification('David Nkwe', '+27 76 977 5423', waMsg);
-  dispatchWhatsAppRobotNotification('Katlego Mathunywa', '+27 69 497 7018', waMsg);
-
-  if (newRegistration.phone) {
-    dispatchWhatsAppRobotNotification(newRegistration.fullName, newRegistration.phone, `Confirmation: Your RSVP for ${db.meetingConfig.title} has been recorded.`);
-  }
-
-  console.log(`[EMAIL ALERT ROUTED] To: ${db.meetingConfig.notificationEmails.join(', ')}`);
-  console.log(`New Registrant: ${newRegistration.fullName} (${newRegistration.email}) - Attendance: ${newRegistration.attendance} - Voter: ${newRegistration.registeredToVote}`);
-
   res.status(201).json({
     success: true,
     registration: newRegistration,
     notificationSent: notificationRecord,
-    whatsAppDispatched: whatsAppRobotState.active,
     stats: computeStats(),
   });
 });
 
-// WHATSAPP BACKGROUND ROBOT ENDPOINTS
-app.get('/api/whatsapp/status', (_req, res) => {
-  res.json({
-    active: whatsAppRobotState.active,
-    botName: whatsAppRobotState.botName,
-    engine: whatsAppRobotState.engine,
-    dispatchedCount: whatsAppRobotState.dispatchedCount,
-    lastDispatchedAt: whatsAppRobotState.lastDispatchedAt,
-    targetPhones: whatsAppRobotState.targetPhones,
-  });
+// Generated QR & Barcodes Endpoints
+app.get('/api/codes', (_req, res) => {
+  res.json({ codes: db.generatedCodes || [] });
 });
 
-app.post('/api/whatsapp/toggle', (_req, res) => {
-  whatsAppRobotState.active = !whatsAppRobotState.active;
-  res.json({ success: true, active: whatsAppRobotState.active });
+app.post('/api/codes', (req, res) => {
+  const { codeType, title, content, format, category, createdBy } = req.body;
+  if (!title || !content) {
+    return res.status(400).json({ error: 'Title and content are required' });
+  }
+
+  const newCode: GeneratedCode = {
+    id: `code-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    codeType: codeType === 'barcode' ? 'barcode' : 'qr',
+    title: String(title).trim(),
+    content: String(content).trim(),
+    format: format || (codeType === 'barcode' ? 'Code 128' : 'Level-H QR'),
+    category: category || 'custom',
+    createdAt: new Date().toISOString(),
+    createdBy: createdBy || 'Organizer',
+  };
+
+  if (!db.generatedCodes) db.generatedCodes = [];
+  db.generatedCodes.unshift(newCode);
+  saveDatabaseToDisk();
+
+  res.status(201).json({ success: true, code: newCode });
 });
 
-app.post('/api/whatsapp/test', (_req, res) => {
-  const testMsg = `*Test Alert from Open-WA Background Robot*\nMeeting: ${db.meetingConfig.title}\nStatus: System verified and operating smoothly in background.`;
-  dispatchWhatsAppRobotNotification('David Nkwe', '+27 76 977 5423', testMsg);
-  dispatchWhatsAppRobotNotification('Katlego Mathunywa', '+27 69 497 7018', testMsg);
-  res.json({
-    success: true,
-    message: 'Test WhatsApp notifications dispatched to David Nkwe & Katlego Mathunywa',
-    dispatchedCount: whatsAppRobotState.dispatchedCount,
-  });
-});
-
-app.get('/api/whatsapp/logs', (_req, res) => {
-  res.json({ logs: whatsAppRobotState.logs.slice(0, 30) });
+app.delete('/api/codes/:id', (req, res) => {
+  const { id } = req.params;
+  db.generatedCodes = (db.generatedCodes || []).filter(c => c.id !== id);
+  saveDatabaseToDisk();
+  res.json({ success: true });
 });
 
 // Delete a registration (Admin)
@@ -649,7 +623,10 @@ app.post('/api/notifications/digest', (_req, res) => {
   });
 });
 
-// AUTHENTICATION ROUTES FOR ORGANIZERS (David Nkwe & Katlego Mathunywa)
+// AUTHENTICATION FOR ORGANIZERS (David Nkwe & Katlego Mathunywa)
+// Supporting:
+// David Nkwe: DaveN / Damlo@2026 or Damlo@1234
+// Katlego Mathunywa: Kmat (or KatlegoM) / Data@1234 or Damlo@1234
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
@@ -659,38 +636,72 @@ app.post('/api/auth/login', (req, res) => {
   const cleanUser = String(username).trim().toLowerCase();
   const cleanPass = String(password).trim();
 
-  // Find user matching username or email
-  const user = db.users.find(u => 
-    u.username.toLowerCase() === cleanUser || 
-    u.email.toLowerCase() === cleanUser
-  );
+  // Dave credentials check
+  const isDaveUser = cleanUser === 'daven' || cleanUser === 'dave.nkwe@gmail.com' || cleanUser === 'david nkwe';
+  const isDavePass = cleanPass === 'Damlo@2026' || cleanPass === 'Damlo@1234';
 
-  const isDavePassValid = cleanUser === 'daven' && (cleanPass === 'Damlo@2026' || cleanPass === 'Damlo@1234');
-  const isKmatPassValid = (cleanUser === 'kmat' || cleanUser === 'katlegom') && (cleanPass === 'Data@1234' || cleanPass === 'Damlo@1234');
-  const isPassMatch = user && (user.passwordHash === cleanPass || isDavePassValid || isKmatPassValid);
+  // Katlego credentials check
+  const isKatlegoUser = cleanUser === 'kmat' || cleanUser === 'katlegom' || cleanUser === 'kenny.weeder71@gmail.com' || cleanUser === 'katlego mathunywa';
+  const isKatlegoPass = cleanPass === 'Data@1234' || cleanPass === 'Damlo@1234';
 
-  if (!user || !isPassMatch) {
+  let authenticatedUser: OrganizerUser | null = null;
+
+  if (isDaveUser && isDavePass) {
+    authenticatedUser = {
+      id: 'user-dave',
+      username: 'DaveN',
+      passwordHash: 'Damlo@2026',
+      fullName: 'David Nkwe',
+      phone: '+27 76 977 5423',
+      email: 'dave.nkwe@gmail.com',
+      role: 'Lead Meeting Host & Executive Director',
+      avatarInitials: 'DN',
+      lastLogin: new Date().toISOString(),
+    };
+  } else if (isKatlegoUser && isKatlegoPass) {
+    authenticatedUser = {
+      id: 'user-katlego',
+      username: 'Kmat',
+      passwordHash: 'Data@1234',
+      fullName: 'Katlego Mathunywa',
+      phone: '+27 69 497 7018',
+      email: 'Kenny.weeder71@gmail.com',
+      role: 'Co-Organizer & Operations Lead',
+      avatarInitials: 'KM',
+      lastLogin: new Date().toISOString(),
+    };
+  } else {
+    // Check in database users list
+    const found = db.users.find(u => 
+      (u.username.toLowerCase() === cleanUser || u.email.toLowerCase() === cleanUser) &&
+      (u.passwordHash === cleanPass || cleanPass === 'Damlo@1234')
+    );
+    if (found) {
+      authenticatedUser = { ...found, lastLogin: new Date().toISOString() };
+    }
+  }
+
+  if (!authenticatedUser) {
     return res.status(401).json({ error: 'Invalid login credentials. Please verify your User ID and Password.' });
   }
 
-  user.lastLogin = new Date().toISOString();
   saveDatabaseToDisk();
 
   const userSafe = {
-    id: user.id,
-    username: user.username,
-    fullName: user.fullName,
-    phone: user.phone,
-    email: user.email,
-    role: user.role,
-    avatarInitials: user.avatarInitials,
-    lastLogin: user.lastLogin,
+    id: authenticatedUser.id,
+    username: authenticatedUser.username,
+    fullName: authenticatedUser.fullName,
+    phone: authenticatedUser.phone,
+    email: authenticatedUser.email,
+    role: authenticatedUser.role,
+    avatarInitials: authenticatedUser.avatarInitials,
+    lastLogin: authenticatedUser.lastLogin,
   };
 
   res.json({
     success: true,
     user: userSafe,
-    token: `token-${user.id}-${Date.now()}`,
+    token: `token-${authenticatedUser.id}-${Date.now()}`,
   });
 });
 
@@ -711,14 +722,12 @@ app.get('/api/auth/users', (_req, res) => {
 // REPORTING SUITE ENDPOINTS
 app.get('/api/reports/summary', (_req, res) => {
   const stats = computeStats();
-  // Group by dietary preferences
   const dietaryMap: Record<string, number> = {};
   db.registrations.forEach(r => {
     const diet = r.dietary || 'None';
     dietaryMap[diet] = (dietaryMap[diet] || 0) + 1;
   });
 
-  // Group by organizations
   const orgMap: Record<string, number> = {};
   db.registrations.forEach(r => {
     const org = r.organization || 'Independent';
@@ -765,6 +774,7 @@ app.get('/api/reports/print-html', (_req, res) => {
           ${r.registeredToVote === 'Yes' ? 'Voter: Yes' : 'Voter: No'}
         </span>
       </td>
+      <td style="padding: 8px; font-weight: bold; color: #0284c7;">${r.wardNumber || 'N/A'}</td>
       <td style="padding: 8px;">${r.dietary || 'None'}</td>
       <td style="padding: 8px; font-size: 11px; color: #64748b;">${new Date(r.createdAt).toLocaleDateString()}</td>
     </tr>
@@ -793,7 +803,7 @@ app.get('/api/reports/print-html', (_req, res) => {
         <button onclick="window.print()" style="padding: 10px 20px; background: #4f46e5; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">Print / Save to PDF</button>
       </div>
       <div class="header">
-        <h1 style="margin: 0; font-size: 24px;">${db.meetingConfig.title}</h1>
+        <h1 style="margin: 0; font-size: 24px;">Damlogate QR Code Generator & Meeting RSVP Report</h1>
         <p style="margin: 4px 0 0; color: #64748b;">Official Meeting RSVP & Attendance Audit Report</p>
         <p style="margin: 4px 0 0; font-size: 13px;">Date: ${db.meetingConfig.date} | Venue: ${db.meetingConfig.location}</p>
         <p style="margin: 4px 0 0; font-size: 12px; color: #6366f1;">Organizers: David Nkwe (+27 76 977 5423) & Katlego Mathunywa (+27 69 497 7018)</p>
@@ -831,6 +841,7 @@ app.get('/api/reports/print-html', (_req, res) => {
             <th>Phone</th>
             <th>Attendance</th>
             <th>Voter Reg</th>
+            <th>Ward Number</th>
             <th>Dietary</th>
             <th>Date Registered</th>
           </tr>
@@ -851,7 +862,7 @@ app.get('/api/reports/print-html', (_req, res) => {
 
 // Export CSV
 app.get('/api/export/csv', (_req, res) => {
-  const headers = ['ID', 'Full Name', 'Email', 'Phone', 'Organization', 'Role', 'Attendance Status', 'Did you register to vote !', 'Dietary Preference', 'Notes', 'Registered At', 'Source'];
+  const headers = ['ID', 'Full Name', 'Email', 'Phone', 'Organization', 'Role', 'Attendance Status', 'Did you register to vote !', 'Ward Number', 'Dietary Preference', 'Notes', 'Registered At', 'Source'];
   const rows = db.registrations.map(r => [
     `"${r.id}"`,
     `"${r.fullName.replace(/"/g, '""')}"`,
@@ -861,6 +872,7 @@ app.get('/api/export/csv', (_req, res) => {
     `"${(r.role || '').replace(/"/g, '""')}"`,
     `"${r.attendance}"`,
     `"${r.registeredToVote || 'Yes'}"`,
+    `"${(r.wardNumber || '').replace(/"/g, '""')}"`,
     `"${(r.dietary || '').replace(/"/g, '""')}"`,
     `"${(r.notes || '').replace(/"/g, '""')}"`,
     `"${r.createdAt}"`,
@@ -868,7 +880,7 @@ app.get('/api/export/csv', (_req, res) => {
   ]);
   const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
   res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="meeting-rsvps-report.csv"');
+  res.setHeader('Content-Disposition', 'attachment; filename="damlogate-meeting-rsvps-report.csv"');
   res.send(csvContent);
 });
 
@@ -888,7 +900,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running at http://0.0.0.0:${PORT}`);
+    console.log(`Damlogate Server running at http://0.0.0.0:${PORT}`);
     console.log(`Shared app access configured at: ${SHARED_APP_URL}`);
   });
 }

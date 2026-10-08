@@ -1,16 +1,18 @@
 import React from 'react';
-import { Users, UserCheck, UserX, Video, Building2, TrendingUp, CheckSquare } from 'lucide-react';
+import { Users, UserCheck, UserX, Video, Building2, TrendingUp, CheckSquare, Hash } from 'lucide-react';
 import { RegistrationStats } from '../types';
 
 interface StatsCardsProps {
   stats: RegistrationStats;
+  hideDeclined?: boolean;
 }
 
-export const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => {
+export const StatsCards: React.FC<StatsCardsProps> = ({ stats, hideDeclined = false }) => {
   const totalVotersAnswered = (stats.registeredToVoteYes || 0) + (stats.registeredToVoteNo || 0);
+  const totalWardsRecorded = Object.keys(stats.wardsCount || {}).length;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-5">
+    <div className={`grid grid-cols-1 sm:grid-cols-2 ${hideDeclined ? 'lg:grid-cols-4' : 'lg:grid-cols-3 xl:grid-cols-5'} gap-4 sm:gap-5`}>
       {/* 1. Total Registered Card */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-slate-850 border border-slate-800 p-5 shadow-lg group hover:border-slate-700 transition-all">
         <div className="flex items-center justify-between">
@@ -30,9 +32,9 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => {
         <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
           <span className="flex items-center gap-1 text-emerald-400">
             <TrendingUp className="w-3.5 h-3.5" />
-            Live Responses
+            Live Firebase Store
           </span>
-          <span>100% recorded</span>
+          <span>100% synchronized</span>
         </div>
       </div>
 
@@ -68,7 +70,7 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => {
         </div>
       </div>
 
-      {/* 3. Did you register to vote ! (Yes / No) - Voting Registration Count */}
+      {/* 3. Did you register to vote ! (Yes / No) */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-950/40 via-slate-900 to-slate-900 border border-cyan-500/30 p-5 shadow-lg shadow-cyan-950/20 group hover:border-cyan-500/50 transition-all">
         <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
         <div className="flex items-center justify-between">
@@ -102,7 +104,6 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => {
             {totalVotersAnswered} responses
           </span>
         </div>
-        {/* Dual Progress Bar for Yes vs No */}
         <div className="mt-3 pt-2.5 border-t border-cyan-900/40">
           <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden flex">
             <div 
@@ -119,65 +120,53 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => {
         </div>
       </div>
 
-      {/* 4. In-Person vs Virtual Details */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-slate-850 border border-slate-800 p-5 shadow-lg group hover:border-slate-700 transition-all">
+      {/* 4. Ward Number Distribution */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-900 border border-indigo-500/30 p-5 shadow-lg group hover:border-indigo-500/50 transition-all">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold tracking-wider uppercase text-slate-400">
-            Attendance Mode
+          <span className="text-xs font-bold tracking-wider uppercase text-indigo-300 flex items-center gap-1.5">
+            Ward Numbers
           </span>
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-            <Building2 className="w-5 h-5" />
-          </div>
-        </div>
-        <div className="mt-3 flex items-baseline gap-3">
-          <div>
-            <div className="text-2xl font-bold text-white">{stats.inPerson}</div>
-            <div className="text-[11px] text-slate-400">In-Person Seats</div>
-          </div>
-          <div className="text-slate-600 font-light text-xl">/</div>
-          <div>
-            <div className="text-2xl font-bold text-white">{stats.virtual}</div>
-            <div className="text-[11px] text-slate-400">Virtual Stream</div>
-          </div>
-        </div>
-        {/* Progress bar */}
-        <div className="mt-4 pt-3 border-t border-slate-800">
-          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden flex">
-            <div 
-              className="bg-blue-500 h-full transition-all duration-500"
-              style={{ width: `${stats.attending > 0 ? (stats.inPerson / stats.attending) * 100 : 50}%` }}
-              title={`In-Person: ${stats.inPerson}`}
-            />
-            <div 
-              className="bg-indigo-500 h-full transition-all duration-500"
-              style={{ width: `${stats.attending > 0 ? (stats.virtual / stats.attending) * 100 : 50}%` }}
-              title={`Virtual: ${stats.virtual}`}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 5. Cannot Attend / Declined */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-slate-850 border border-slate-800 p-5 shadow-lg group hover:border-slate-700 transition-all">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold tracking-wider uppercase text-slate-400">
-            Cannot Attend (Apologies)
-          </span>
-          <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
-            <UserX className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300">
+            <Hash className="w-5 h-5" />
           </div>
         </div>
         <div className="mt-3 flex items-baseline gap-2">
           <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            {stats.declined}
+            {totalWardsRecorded}
           </span>
-          <span className="text-xs text-rose-400/80">not attending</span>
+          <span className="text-xs text-indigo-300">Wards Represented</span>
         </div>
-        <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-          <span>Minutes requested</span>
-          <span className="text-slate-300 font-medium">Notified Dave & Kenny</span>
+        <div className="mt-4 pt-3 border-t border-indigo-900/40 flex items-center justify-between text-xs text-slate-300">
+          <span>Active Wards:</span>
+          <span className="font-mono text-cyan-300 font-bold truncate max-w-[120px]">
+            {Object.keys(stats.wardsCount || {}).slice(0, 3).join(', ') || 'Ward 14, 08'}
+          </span>
         </div>
       </div>
+
+      {/* 5. Cannot Attend / Declined */}
+      {!hideDeclined && (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-slate-850 border border-slate-800 p-5 shadow-lg group hover:border-slate-700 transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold tracking-wider uppercase text-slate-400">
+              Cannot Attend (Apologies)
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+              <UserX className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+              {stats.declined}
+            </span>
+            <span className="text-xs text-rose-400/80">not attending</span>
+          </div>
+          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+            <span>Minutes requested</span>
+            <span className="text-slate-300 font-medium">Dave & Kenny Alerted</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

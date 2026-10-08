@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidRegistration(data) {
+      return data.fullName is string && data.fullName.size() > 0 && data.fullName.size() <= 120
+        && data.email is string && data.email.size() > 3 && data.email.size() <= 160
+        && (data.attendance == 'in_person' || data.attendance == 'virtual' || data.attendance == 'declined')
+        && (data.registeredToVote == 'Yes' || data.registeredToVote == 'No')
+        && (!('wardNumber' in data) || (data.wardNumber is string && data.wardNumber.size() <= 30))
+        && (!('phone' in data) || (data.phone is string && data.phone.size() <= 40))
+        && (!('organization' in data) || (data.organization is string && data.organization.size() <= 120))
+        && (!('role' in data) || (data.role is string && data.role.size() <= 100))
+        && (!('dietary' in data) || (data.dietary is string && data.dietary.size() <= 60))
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 600));
+    }
+
+    match /registrations/{registrationId} {
+      allow read: if true;
+      allow create: if isValidId(registrationId) && isValidRegistration(incoming());
+      allow update: if isValidId(registrationId) && isValidRegistration(incoming());
+      allow delete: if isValidId(registrationId);
+    }
+
+    match /meetingConfig/{configId} {
+      allow read: if true;
+      allow write: if isValidId(configId);
+    }
+
+    match /generatedCodes/{codeId} {
+      allow read: if true;
+      allow create, update: if isValidId(codeId) 
+        && incoming().title is string && incoming().title.size() <= 100
+        && incoming().content is string && incoming().content.size() <= 2000;
+      allow delete: if isValidId(codeId);
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow create: if isValidId(notificationId) 
+        && incoming().subject is string && incoming().subject.size() <= 250;
+      allow update, delete: if isValidId(notificationId);
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isValidId(userId);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

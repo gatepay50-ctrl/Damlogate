@@ -18,6 +18,7 @@
     "googleFormsUrl": "https://docs.google.com/forms/d/e/1FAIpQLScMeetingRSVP2026/viewform",
     "eotofUrl": "https://www.eotof.co.za",
     "damlogateUrl": "https://www.damlogate.co.za",
+    "whatsappNumber": "27769775423",
     "sharedAppUrl": "https://ais-pre-k2y4juk2g726fowugvfirf-408722122406.europe-west3.run.app",
     "qrConfig": {
       "mode": "registration_hub",
@@ -39,6 +40,21 @@
   },
   "registrations": [
     {
+      "id": "reg-1791500540669-dvqx",
+      "fullName": "Mandla Khumalo",
+      "email": "mandla@africastrat.co.za",
+      "phone": "+27 72 888 1234",
+      "organization": "Khumalo Logistics",
+      "role": "",
+      "attendance": "in_person",
+      "registeredToVote": "Yes",
+      "wardNumber": "Ward 07",
+      "dietary": "None",
+      "notes": "",
+      "createdAt": "2026-10-08T23:02:20.669Z",
+      "source": "QR Code Scan (Mobile)"
+    },
+    {
       "id": "reg-1791494150062-j2r2",
       "fullName": "Nandi Sithole",
       "email": "nandi@sitholeconsulting.co.za",
@@ -50,7 +66,8 @@
       "notes": "",
       "createdAt": "2026-10-08T21:15:50.062Z",
       "source": "QR Code Scan (Mobile)",
-      "registeredToVote": "Yes"
+      "registeredToVote": "Yes",
+      "wardNumber": "Ward 1"
     },
     {
       "id": "reg-1",
@@ -64,7 +81,8 @@
       "notes": "Looking forward to the Q4 targets presentation.",
       "createdAt": "2026-10-08T16:09:12.349Z",
       "source": "QR Scan - Mobile",
-      "registeredToVote": "Yes"
+      "registeredToVote": "Yes",
+      "wardNumber": "Ward 8"
     },
     {
       "id": "reg-2",
@@ -78,7 +96,8 @@
       "notes": "Joining remotely from San Francisco team.",
       "createdAt": "2026-10-08T17:09:12.349Z",
       "source": "QR Scan - Mobile",
-      "registeredToVote": "No"
+      "registeredToVote": "No",
+      "wardNumber": "Ward 15"
     },
     {
       "id": "reg-3",
@@ -92,7 +111,8 @@
       "notes": "Will bring 2 hard copies of the financial audit.",
       "createdAt": "2026-10-08T18:09:12.349Z",
       "source": "QR Scan - Mobile",
-      "registeredToVote": "Yes"
+      "registeredToVote": "Yes",
+      "wardNumber": "Ward 22"
     },
     {
       "id": "reg-4",
@@ -106,7 +126,8 @@
       "notes": "Confirmed attending in person.",
       "createdAt": "2026-10-08T19:09:12.349Z",
       "source": "QR Scan - Mobile",
-      "registeredToVote": "Yes"
+      "registeredToVote": "Yes",
+      "wardNumber": "Ward 29"
     },
     {
       "id": "reg-5",
@@ -120,7 +141,8 @@
       "notes": "Please ensure virtual link recording is shared afterwards.",
       "createdAt": "2026-10-08T20:09:12.349Z",
       "source": "QR Scan - Mobile",
-      "registeredToVote": "No"
+      "registeredToVote": "No",
+      "wardNumber": "Ward 6"
     },
     {
       "id": "reg-6",
@@ -134,10 +156,25 @@
       "notes": "Sending apologies due to conflicting high court arbitration.",
       "createdAt": "2026-10-08T20:39:12.349Z",
       "source": "QR Scan - Mobile",
-      "registeredToVote": "Yes"
+      "registeredToVote": "Yes",
+      "wardNumber": "Ward 13"
     }
   ],
   "notifications": [
+    {
+      "id": "notif-1791500540669",
+      "recipients": [
+        "dave.nkwe@gmail.com",
+        "Kenny.weeder71@gmail.com"
+      ],
+      "subject": "[RSVP Alert] New Registration: Mandla Khumalo (Attending In-Person) - Ward 07",
+      "preview": "Mandla Khumalo (Khumalo Logistics) has registered: Attending In-Person. Registered to Vote: Yes. Ward: Ward 07. Email: mandla@africastrat.co.za, Phone: +27 72 888 1234",
+      "attendeeName": "Mandla Khumalo",
+      "attendeeEmail": "mandla@africastrat.co.za",
+      "attendance": "in_person",
+      "sentAt": "2026-10-08T23:02:20.669Z",
+      "status": "delivered"
+    },
     {
       "id": "notif-1791494150062",
       "recipients": [
@@ -196,7 +233,7 @@
     {
       "id": "user-katlego",
       "username": "KatlegoM",
-      "passwordHash": "Damlo@1234",
+      "passwordHash": "Data@1234",
       "fullName": "Katlego Mathunywa",
       "phone": "+27 69 497 7018",
       "email": "Kenny.weeder71@gmail.com",
@@ -214,6 +251,28 @@
       "role": "Co-Organizer & Operations Lead",
       "avatarInitials": "KM",
       "lastLogin": "2026-10-08T21:26:30.093Z"
+    }
+  ],
+  "generatedCodes": [
+    {
+      "id": "code-1",
+      "codeType": "qr",
+      "title": "Damlogate Official Meeting RSVP Hub",
+      "content": "https://ais-pre-epyop3nnxjxr6smwxasc4e-944514003021.europe-west2.run.app?view=register",
+      "format": "Level-H QR",
+      "category": "url",
+      "createdAt": "2026-10-08T23:02:06.605Z",
+      "createdBy": "David Nkwe"
+    },
+    {
+      "id": "code-2",
+      "codeType": "barcode",
+      "title": "Executive Attendee Badge Pass",
+      "content": "DLG-2026-VOTE-01",
+      "format": "Code 128",
+      "category": "badge",
+      "createdAt": "2026-10-08T23:02:06.606Z",
+      "createdBy": "Katlego Mathunywa"
     }
   ]
 }

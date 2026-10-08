@@ -13,7 +13,8 @@ import {
   Lock, 
   UserCheck,
   LogOut,
-  Calendar
+  Calendar,
+  Barcode
 } from 'lucide-react';
 import { MeetingConfig, OrganizerUser } from '../types';
 
@@ -23,6 +24,7 @@ interface HeaderProps {
   onOpenNotifications: () => void;
   onOpenSettings: () => void;
   onOpenQrEditor: () => void;
+  onOpenGeneratorSuite: () => void;
   onOpenReporting: () => void;
   onOpenLogin: () => void;
   onOpenRegistrationForm: () => void;
@@ -42,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNotifications,
   onOpenSettings,
   onOpenQrEditor,
+  onOpenGeneratorSuite,
   onOpenReporting,
   onOpenLogin,
   onOpenRegistrationForm,
@@ -68,15 +71,15 @@ export const Header: React.FC<HeaderProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-base sm:text-lg font-bold tracking-tight text-white line-clamp-1">
-                  {meeting.title || 'Meeting RSVP Portal'}
+                  Damlogate QR Code Generator
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Live RSVP
+                  Firebase Live
                 </span>
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
-                Organizers: David Nkwe &bull; Katlego Mathunywa &bull; Notifications Active
+                Organizers: David Nkwe &bull; Katlego Mathunywa &bull; Universal Cell Phone Compatibility
               </p>
             </div>
           </div>
@@ -131,6 +134,16 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             </div>
 
+            {/* QR & Barcode Generator Suite Button */}
+            <button
+              onClick={onOpenGeneratorSuite}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-bold shadow-sm transition-colors cursor-pointer"
+              title="Generate Custom QR Codes & Barcodes for any phone"
+            >
+              <Barcode className="w-4 h-4 text-white" />
+              <span className="hidden sm:inline">Generator Suite</span>
+            </button>
+
             {/* Reports Suite Button */}
             <button
               onClick={onOpenReporting}
@@ -138,30 +151,30 @@ export const Header: React.FC<HeaderProps> = ({
               title="Access Persistent Attendance & RSVP Reports"
             >
               <BarChart3 className="w-4 h-4 text-emerald-400" />
-              <span className="hidden sm:inline">Reports</span>
+              <span className="hidden lg:inline">Reports</span>
             </button>
 
             {/* Edit QR Code Information */}
             <button
               onClick={onOpenQrEditor}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white text-xs sm:text-sm font-semibold border border-slate-700 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs sm:text-sm font-semibold border border-slate-700 transition-colors cursor-pointer"
               title="Edit QR Code Destinations & Information"
             >
               <Edit3 className="w-4 h-4 text-indigo-400" />
-              <span className="hidden lg:inline">Edit QR</span>
+              <span className="hidden xl:inline">Edit QR</span>
             </button>
 
             {/* Stage / Projector Mode */}
             <button
               onClick={onOpenStageMode}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold shadow-sm transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs sm:text-sm font-semibold border border-slate-700 transition-colors cursor-pointer"
               title="Show Fullscreen Presenter / TV Screen with Big QR Code"
             >
-              <Tv className="w-4 h-4 text-indigo-200" />
-              <span className="hidden lg:inline">Screen Mode</span>
+              <Tv className="w-4 h-4 text-indigo-400" />
+              <span className="hidden xl:inline">Screen Mode</span>
             </button>
 
-            {/* Profile View / Authentication: Replace "Organizer Login" with "Log-off" when user is authenticated */}
+            {/* Profile View / Authentication */}
             {currentUser ? (
               <div className="flex items-center gap-1.5">
                 <button
@@ -175,20 +188,23 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   onClick={onLogout}
                   className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-xs font-bold border bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-white border-rose-800/60 transition-colors cursor-pointer shadow-sm"
-                  title={`Log-off ${currentUser.fullName} session`}
+                  title={`Log-Off ${currentUser.fullName} session`}
                 >
                   <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                  <span className="inline">Log-off</span>
+                  <span className="inline">Log-Off</span>
                 </button>
               </div>
             ) : (
               <button
-                onClick={onOpenLogin}
-                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-xs font-semibold border bg-slate-800 text-slate-300 hover:text-white border-slate-700 hover:bg-slate-750 transition-colors cursor-pointer"
-                title="Organizer Login (David Nkwe / Katlego Mathunywa)"
+                onClick={() => {
+                  if (onLogout) onLogout();
+                  onOpenLogin();
+                }}
+                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-lg text-xs font-bold border bg-slate-800 hover:bg-rose-950/40 text-rose-300 hover:text-white border-slate-700 hover:border-rose-800/60 transition-colors cursor-pointer"
+                title="Log-Off session"
               >
-                <Lock className="w-4 h-4 text-slate-400" />
-                <span className="hidden sm:inline">Organizer Login</span>
+                <LogOut className="w-4 h-4 text-rose-400" />
+                <span className="inline">Log-Off</span>
               </button>
             )}
 
@@ -214,7 +230,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ? 'bg-slate-800 text-indigo-400 border-indigo-500/40 hover:bg-slate-750' 
                   : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
               }`}
-              title={soundEnabled ? 'Chime sound on registration: Enabled' : 'Chime sound: Muted'}
+              title={soundEnabled ? 'Chime sound: Enabled' : 'Chime sound: Muted'}
             >
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             </button>

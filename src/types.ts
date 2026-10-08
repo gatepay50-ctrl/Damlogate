@@ -50,7 +50,8 @@ export interface Registration {
   organization: string;
   role?: string;
   attendance: AttendanceStatus;
-  registeredToVote?: 'Yes' | 'No';
+  registeredToVote: 'Yes' | 'No';
+  wardNumber?: string;
   dietary?: string;
   notes?: string;
   createdAt: string;
@@ -67,6 +68,20 @@ export interface RegistrationStats {
   registeredToVoteYes: number;
   registeredToVoteNo: number;
   registeredToVoteRate: number;
+  wardsCount?: Record<string, number>;
+}
+
+export interface GeneratedCode {
+  id: string;
+  codeType: 'qr' | 'barcode';
+  title: string;
+  content: string;
+  format?: string;
+  category: string;
+  createdAt: string;
+  createdBy?: string;
+  fgColor?: string;
+  bgColor?: string;
 }
 
 export interface NotificationRecord {

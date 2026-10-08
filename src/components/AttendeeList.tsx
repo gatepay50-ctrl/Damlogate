@@ -11,7 +11,8 @@ import {
   XCircle, 
   ChevronDown, 
   ChevronUp, 
-  CheckSquare 
+  CheckSquare,
+  Hash
 } from 'lucide-react';
 import { Registration, AttendanceStatus } from '../types';
 
@@ -37,6 +38,7 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
       item.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.organization && item.organization.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.wardNumber && item.wardNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (item.phone && item.phone.includes(searchTerm));
 
     if (!matchesSearch) return false;
@@ -104,8 +106,8 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
       {/* Header and Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-bold text-white">Live RSVP Registrations</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-lg font-bold text-white">Live RSVP &amp; Voter Registrations</h3>
             <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300">
               {registrations.length} Total
             </span>
@@ -114,7 +116,7 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            Real-time feed updated as attendees scan QR code and submit form.
+            Real-time feed stored in Firebase Firestore and synchronized across devices.
           </p>
         </div>
 
@@ -125,7 +127,7 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search name, email, company..."
+            placeholder="Search name, ward, email, company..."
             className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
           />
         </div>
@@ -186,6 +188,12 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
                         </span>
                         {getAttendanceBadge(attendee.attendance)}
                         {getVoterBadge(attendee.registeredToVote)}
+                        {attendee.wardNumber && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                            <Hash className="w-3 h-3 text-cyan-400" />
+                            {attendee.wardNumber}
+                          </span>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 mt-1">
                         <span className="flex items-center gap-1">
@@ -219,7 +227,6 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
                     </div>
 
                     <div className="flex items-center gap-1">
-                      {/* Expand details button */}
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : attendee.id)}
                         className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
@@ -228,7 +235,6 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
                         {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
 
-                      {/* Delete */}
                       <button
                         onClick={() => {
                           if (confirm(`Remove ${attendee.fullName} from RSVP list?`)) {
@@ -246,22 +252,26 @@ export const AttendeeList: React.FC<AttendeeListProps> = ({
 
                 {/* Expandable details */}
                 {isExpanded && (
-                  <div className="mt-3 pt-3 border-t border-slate-800 text-xs grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-900/60 p-3 rounded-lg">
+                  <div className="mt-3 pt-3 border-t border-slate-800 text-xs grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-900/60 p-3 rounded-lg">
                     <div>
-                      <span className="font-semibold text-slate-400 block mb-0.5">Did you register to vote !:</span>
+                      <span className="font-semibold text-slate-400 block mb-0.5">Did you register to vote:</span>
                       <span className={`font-bold ${attendee.registeredToVote === 'Yes' ? 'text-emerald-400' : 'text-slate-400'}`}>
                         {attendee.registeredToVote === 'Yes' ? 'Yes (Confirmed Registered Voter)' : 'No (Not Registered)'}
                       </span>
                     </div>
+                    <div>
+                      <span className="font-semibold text-slate-400 block mb-0.5">Ward Number:</span>
+                      <span className="text-cyan-300 font-bold font-mono">{attendee.wardNumber || 'Not specified'}</span>
+                    </div>
                     {attendee.dietary && attendee.dietary !== 'None' && (
                       <div>
-                        <span className="font-semibold text-slate-400 block mb-0.5">Dietary Requirement:</span>
+                        <span className="font-semibold text-slate-400 block mb-0.5">Dietary:</span>
                         <span className="text-amber-300 font-medium">{attendee.dietary}</span>
                       </div>
                     )}
                     {attendee.notes && (
-                      <div className="sm:col-span-3">
-                        <span className="font-semibold text-slate-400 block mb-0.5">Notes for Hosts (Dave & Kenny):</span>
+                      <div className="sm:col-span-4">
+                        <span className="font-semibold text-slate-400 block mb-0.5">Notes for Hosts:</span>
                         <p className="text-slate-300 italic">"{attendee.notes}"</p>
                       </div>
                     )}

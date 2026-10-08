@@ -11,15 +11,19 @@ import {
   Briefcase, 
   MessageSquare, 
   Send, 
-  ArrowLeft,
-  Sparkles,
-  Download,
-  AlertCircle,
-  FileText,
-  ExternalLink
+  ArrowLeft, 
+  Sparkles, 
+  Download, 
+  AlertCircle, 
+  FileText, 
+  ExternalLink,
+  Vote,
+  Hash
 } from 'lucide-react';
 import { MeetingConfig, AttendanceStatus, Registration } from '../types';
 import { downloadCalendarEvent } from '../utils/calendar';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface RegistrationFormProps {
   meeting: MeetingConfig;
@@ -40,6 +44,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   const [role, setRole] = useState('');
   const [attendance, setAttendance] = useState<AttendanceStatus>('in_person');
   const [registeredToVote, setRegisteredToVote] = useState<'Yes' | 'No'>('Yes');
+  const [wardNumber, setWardNumber] = useState('');
   const [dietary, setDietary] = useState('None');
   const [notes, setNotes] = useState('');
   const [formTheme, setFormTheme] = useState<'google_forms' | 'modern'>('google_forms');
@@ -63,26 +68,43 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       setErrorMsg('Please enter your phone or WhatsApp contact number.');
       return;
     }
+    if (!wardNumber.trim()) {
+      setErrorMsg('Please enter your Ward number (e.g. Ward 14 or 04).');
+      return;
+    }
 
     setIsSubmitting(true);
+    const regId = `reg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const regPayload: Registration = {
+      id: regId,
+      fullName: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      organization: organization.trim() || 'Independent',
+      role: role.trim(),
+      attendance,
+      registeredToVote,
+      wardNumber: wardNumber.trim().startsWith('Ward') ? wardNumber.trim() : `Ward ${wardNumber.trim()}`,
+      dietary: dietary.trim() || 'None',
+      notes: notes.trim(),
+      createdAt: new Date().toISOString(),
+      source: 'Damlogate QR Code Mobile Form',
+    };
+
     try {
+      // 1. Save directly to Firebase Firestore
+      try {
+        await setDoc(doc(db, 'registrations', regId), regPayload);
+      } catch (firestoreErr) {
+        console.warn('Direct Firestore write handled:', firestoreErr);
+        handleFirestoreError(firestoreErr, OperationType.CREATE, `registrations/${regId}`);
+      }
+
+      // 2. Also sync to Express backend for disk persistence & notifications
       const response = await fetch('/api/registrations', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fullName,
-          email,
-          phone,
-          organization,
-          role,
-          attendance,
-          registeredToVote,
-          dietary,
-          notes,
-          source: 'QR Code Mobile Form',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(regPayload),
       });
 
       if (!response.ok) {
@@ -91,21 +113,26 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       }
 
       const result = await response.json();
-      setSubmittedData(result.registration);
+      setSubmittedData(result.registration || regPayload);
 
       // Trigger celebratory confetti
       confetti({
-        particleCount: 80,
-        spread: 70,
+        particleCount: 90,
+        spread: 80,
         origin: { y: 0.6 },
       });
 
       if (onSubmitSuccess) {
-        onSubmitSuccess(result.registration);
+        onSubmitSuccess(result.registration || regPayload);
       }
     } catch (err: any) {
-      console.error('Registration error:', err);
-      setErrorMsg(err.message || 'Error saving registration. Please try again.');
+      console.error('Registration submission error:', err);
+      // If Firestore failed with security error, still show the user confirmation if saved locally or show friendly message
+      if (err.message && err.message.includes('permission')) {
+        setErrorMsg('Submission security check failed. Please verify required fields.');
+      } else {
+        setErrorMsg(err.message || 'Error recording RSVP. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -119,6 +146,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     setRole('');
     setAttendance('in_person');
     setRegisteredToVote('Yes');
+    setWardNumber('');
     setDietary('None');
     setNotes('');
     setSubmittedData(null);
@@ -138,7 +166,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             </div>
             <h2 className="text-2xl font-black">Registration Confirmed!</h2>
             <p className="text-emerald-100 text-sm mt-1">
-              Your response has been officially recorded in real-time.
+              Recorded in Google Cloud Firestore &amp; Damlogate Database.
             </p>
           </div>
 
@@ -177,19 +205,31 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 </div>
               </div>
 
-              {/* Voter Registration Answer Badge */}
-              <div className="pt-2 flex items-center justify-between p-3 rounded-xl bg-slate-100/90 border border-slate-200">
-                <span className="text-xs font-semibold text-slate-700">
-                  Did you register to vote !
-                </span>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
-                  submittedData.registeredToVote === 'Yes'
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                    : 'bg-slate-200 text-slate-700 border border-slate-300'
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${submittedData.registeredToVote === 'Yes' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                  {submittedData.registeredToVote === 'Yes' ? 'Yes (Registered)' : 'No (Not Registered)'}
-                </span>
+              {/* Questionnaire Results: Voter Registration & Ward Number */}
+              <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-100 border border-slate-200">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Voter Status</span>
+                    <span className="text-xs font-bold text-slate-800">Did you register to vote:</span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                    submittedData.registeredToVote === 'Yes'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {submittedData.registeredToVote === 'Yes' ? 'Yes' : 'No'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-100 border border-slate-200">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Voter Ward</span>
+                    <span className="text-xs font-bold text-slate-800">Ward Number:</span>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200 font-mono">
+                    {submittedData.wardNumber || 'N/A'}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -197,9 +237,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             <div className="bg-indigo-50/70 rounded-2xl p-4 border border-indigo-100 text-xs text-indigo-900 flex items-start gap-3">
               <Mail className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold">Host Notification Sent</p>
+                <p className="font-bold">Host Notification Dispatched</p>
                 <p className="text-indigo-700 mt-0.5">
-                  Notification email dispatched to meeting hosts: <strong>dave.nkwe@gmail.com</strong> and <strong>kenny.weeder71@gmail.com</strong>.
+                  Real-time alert routed to David Nkwe (<strong>dave.nkwe@gmail.com</strong>) and Katlego Mathunywa (<strong>Kenny.weeder71@gmail.com</strong>).
                 </p>
               </div>
             </div>
@@ -242,7 +282,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   className="w-full flex items-center justify-center gap-1.5 py-2 px-4 text-slate-500 hover:text-slate-800 font-medium text-xs transition-colors cursor-pointer"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Back to Live Dashboard</span>
+                  <span>Back to Damlogate Dashboard</span>
                 </button>
               )}
             </div>
@@ -252,7 +292,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
     );
   }
 
-  // Active Registration Form view
   const isGoogleFormsStyle = formTheme === 'google_forms';
 
   return (
@@ -271,7 +310,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           </button>
         )}
 
-        {/* Style toggle: Google Forms aesthetic vs Modern */}
+        {/* Style toggle */}
         <div className="flex items-center gap-2 text-xs text-slate-400 ml-auto">
           <span>Form View:</span>
           <div className="bg-slate-800 p-0.5 rounded-lg border border-slate-700 flex">
@@ -302,7 +341,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           ? 'bg-[#f0ebf8] text-slate-900 border border-purple-200' 
           : 'bg-slate-900 text-white border border-slate-800'
       }`}>
-        {/* Google Forms Signature Purple Banner */}
+        {/* Purple Accent Bar */}
         {isGoogleFormsStyle && (
           <div className="h-3.5 bg-[#673ab7] w-full" />
         )}
@@ -319,7 +358,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 ? 'bg-purple-100 text-purple-800' 
                 : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
             }`}>
-              Meeting RSVP &amp; Registration
+              Damlogate RSVP &amp; Voter Questionnaire
             </span>
           </div>
           <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
@@ -383,11 +422,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               Cell Phone Verified
             </span>
           </div>
-          <p className="text-xs text-slate-500 mb-3">
-            Quickly navigate to partner websites directly from this QR scan:
-          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-            {/* EOTOF Link */}
             <a
               href={meeting.eotofUrl || 'https://www.eotof.co.za'}
               target="_blank"
@@ -406,7 +441,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600" />
             </a>
 
-            {/* Damlogate Link */}
             <a
               href={meeting.damlogateUrl || 'https://www.damlogate.co.za'}
               target="_blank"
@@ -423,20 +457,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 </div>
               </div>
               <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600" />
-            </a>
-          </div>
-
-          {/* Quick WhatsApp RSVP Option */}
-          <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
-            <span className="text-[11px] text-slate-500">Prefer WhatsApp?</span>
-            <a
-              href={`https://wa.me/27769775423?text=${encodeURIComponent(`Hello David Nkwe and Katlego Mathunywa, I would like to RSVP for the ${meeting.title}.`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-colors"
-            >
-              <span>RSVP via WhatsApp Direct</span>
-              <ExternalLink className="w-3 h-3" />
             </a>
           </div>
         </div>
@@ -578,7 +598,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             </div>
           </div>
 
-          {/* Section 5: Will You Attend Meeting? */}
+          {/* Section 5: Attendance Choice */}
           <div className={`p-5 rounded-xl transition-all ${
             isGoogleFormsStyle 
               ? 'bg-white border border-slate-200 shadow-sm focus-within:border-purple-600' 
@@ -588,18 +608,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               Will you attend the meeting? <span className="text-red-500">*</span>
             </label>
             <p className={`text-xs mb-4 ${isGoogleFormsStyle ? 'text-slate-500' : 'text-slate-400'}`}>
-              Please indicate your confirmed attendance format so hosts can prepare seating &amp; refreshments.
+              Please indicate your confirmed attendance format.
             </p>
 
             <div className="space-y-2.5">
-              {/* Option 1: In Person */}
               <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
                 attendance === 'in_person'
                   ? isGoogleFormsStyle 
-                    ? 'bg-purple-50/70 border-purple-500 text-purple-950 font-medium'
+                    ? 'bg-purple-50/70 border-purple-500 text-purple-950 font-medium' 
                     : 'bg-indigo-950/40 border-indigo-500 text-white font-medium'
-                  : isGoogleFormsStyle
-                    ? 'border-slate-200 hover:bg-slate-50 text-slate-800'
+                  : isGoogleFormsStyle 
+                    ? 'border-slate-200 hover:bg-slate-50 text-slate-800' 
                     : 'border-slate-800 hover:bg-slate-800 text-slate-300'
               }`}>
                 <input
@@ -608,24 +627,23 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   value="in_person"
                   checked={attendance === 'in_person'}
                   onChange={() => setAttendance('in_person')}
-                  className="mt-0.5 text-purple-600 focus:ring-purple-500"
+                  className="mt-0.5 text-purple-600"
                 />
                 <div>
                   <div className="text-sm font-bold">Yes, attending in person</div>
                   <div className={`text-xs ${isGoogleFormsStyle ? 'text-slate-500' : 'text-slate-400'}`}>
-                    At {meeting.location} (Venue seat allocated)
+                    At {meeting.location}
                   </div>
                 </div>
               </label>
 
-              {/* Option 2: Virtual */}
               <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
                 attendance === 'virtual'
                   ? isGoogleFormsStyle 
-                    ? 'bg-purple-50/70 border-purple-500 text-purple-950 font-medium'
+                    ? 'bg-purple-50/70 border-purple-500 text-purple-950 font-medium' 
                     : 'bg-indigo-950/40 border-indigo-500 text-white font-medium'
-                  : isGoogleFormsStyle
-                    ? 'border-slate-200 hover:bg-slate-50 text-slate-800'
+                  : isGoogleFormsStyle 
+                    ? 'border-slate-200 hover:bg-slate-50 text-slate-800' 
                     : 'border-slate-800 hover:bg-slate-800 text-slate-300'
               }`}>
                 <input
@@ -634,24 +652,23 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   value="virtual"
                   checked={attendance === 'virtual'}
                   onChange={() => setAttendance('virtual')}
-                  className="mt-0.5 text-purple-600 focus:ring-purple-500"
+                  className="mt-0.5 text-purple-600"
                 />
                 <div>
                   <div className="text-sm font-bold">Yes, attending virtually / online</div>
                   <div className={`text-xs ${isGoogleFormsStyle ? 'text-slate-500' : 'text-slate-400'}`}>
-                    Joining via Google Meet / Livestream link
+                    Joining via Google Meet livestream
                   </div>
                 </div>
               </label>
 
-              {/* Option 3: Declined */}
               <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
                 attendance === 'declined'
                   ? isGoogleFormsStyle 
-                    ? 'bg-rose-50 border-rose-400 text-rose-950 font-medium'
+                    ? 'bg-rose-50 border-rose-400 text-rose-950 font-medium' 
                     : 'bg-rose-950/40 border-rose-500 text-white font-medium'
-                  : isGoogleFormsStyle
-                    ? 'border-slate-200 hover:bg-slate-50 text-slate-800'
+                  : isGoogleFormsStyle 
+                    ? 'border-slate-200 hover:bg-slate-50 text-slate-800' 
                     : 'border-slate-800 hover:bg-slate-800 text-slate-300'
               }`}>
                 <input
@@ -660,19 +677,19 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   value="declined"
                   checked={attendance === 'declined'}
                   onChange={() => setAttendance('declined')}
-                  className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                  className="mt-0.5 text-rose-600"
                 />
                 <div>
                   <div className="text-sm font-bold">No, cannot attend (Sending apologies)</div>
                   <div className={`text-xs ${isGoogleFormsStyle ? 'text-slate-500' : 'text-slate-400'}`}>
-                    Meeting minutes &amp; recording will be emailed
+                    Meeting minutes will be emailed
                   </div>
                 </div>
               </label>
             </div>
           </div>
 
-          {/* Section: Did you register to vote ! (Yes / No) */}
+          {/* Section 6: Questionnaire - Did you register to vote (Yes / No) */}
           <div className={`p-5 rounded-xl transition-all ${
             isGoogleFormsStyle 
               ? 'bg-white border border-slate-200 shadow-sm focus-within:border-purple-600' 
@@ -680,6 +697,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
           }`}>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-sm font-bold flex items-center gap-1.5">
+                <Vote className="w-4 h-4 text-purple-600" />
                 <span>Did you register to vote !</span>
                 <span className="text-red-500">*</span>
               </label>
@@ -688,15 +706,14 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   ? 'bg-purple-100 text-purple-800 border border-purple-200' 
                   : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
               }`}>
-                Voting Registration
+                Official Questionnaire
               </span>
             </div>
             <p className={`text-xs mb-3.5 ${isGoogleFormsStyle ? 'text-slate-500' : 'text-slate-400'}`}>
-              Please select your official voting registration status (Yes / No)
+              Please confirm whether you are registered to vote (Yes / No)
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Option: Yes */}
               <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
                 registeredToVote === 'Yes'
                   ? isGoogleFormsStyle
@@ -712,7 +729,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   value="Yes"
                   checked={registeredToVote === 'Yes'}
                   onChange={() => setRegisteredToVote('Yes')}
-                  className="mt-0.5 text-purple-600 focus:ring-purple-500"
+                  className="mt-0.5 text-purple-600"
                 />
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
@@ -724,12 +741,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     )}
                   </div>
                   <div className={`text-xs mt-0.5 ${isGoogleFormsStyle ? 'text-slate-500' : 'text-slate-400'}`}>
-                    Yes, I have registered to vote
+                    Yes, I am registered to vote
                   </div>
                 </div>
               </label>
 
-              {/* Option: No */}
               <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
                 registeredToVote === 'No'
                   ? isGoogleFormsStyle
@@ -745,7 +761,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                   value="No"
                   checked={registeredToVote === 'No'}
                   onChange={() => setRegisteredToVote('No')}
-                  className="mt-0.5 text-rose-600 focus:ring-rose-500"
+                  className="mt-0.5 text-rose-600"
                 />
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
@@ -757,14 +773,43 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     )}
                   </div>
                   <div className={`text-xs mt-0.5 ${isGoogleFormsStyle ? 'text-slate-500' : 'text-slate-400'}`}>
-                    No, I have not registered to vote yet
+                    No, I am not registered to vote
                   </div>
                 </div>
               </label>
             </div>
           </div>
 
-          {/* Section 6: Dietary Preferences */}
+          {/* Section 7: Ward Number */}
+          <div className={`p-5 rounded-xl transition-all ${
+            isGoogleFormsStyle 
+              ? 'bg-white border border-slate-200 shadow-sm focus-within:border-purple-600' 
+              : 'bg-slate-850 border border-slate-800 focus-within:border-indigo-500'
+          }`}>
+            <label className="block text-sm font-semibold mb-1 flex items-center gap-1.5">
+              <Hash className="w-4 h-4 text-purple-600" />
+              <span>Ward number</span> <span className="text-red-500">*</span>
+            </label>
+            <p className={`text-xs mb-3 ${isGoogleFormsStyle ? 'text-slate-500' : 'text-slate-400'}`}>
+              Please enter your local municipal voting ward number (e.g. Ward 14, Ward 04, Ward 22)
+            </p>
+            <div className="relative">
+              <input
+                type="text"
+                required
+                value={wardNumber}
+                onChange={(e) => setWardNumber(e.target.value)}
+                placeholder="e.g. Ward 14"
+                className={`w-full px-3.5 py-2.5 text-sm rounded-lg border outline-none font-medium transition-all ${
+                  isGoogleFormsStyle
+                    ? 'bg-slate-50 border-slate-300 focus:bg-white focus:border-purple-600 text-slate-900'
+                    : 'bg-slate-800 border-slate-700 focus:border-indigo-500 text-white'
+                }`}
+              />
+            </div>
+          </div>
+
+          {/* Section 8: Dietary Preferences */}
           {attendance === 'in_person' && (
             <div className={`p-5 rounded-xl transition-all ${
               isGoogleFormsStyle 
@@ -781,10 +826,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
                       dietary === item
                         ? isGoogleFormsStyle 
-                          ? 'bg-purple-100/60 border-purple-500 font-bold text-purple-900'
+                          ? 'bg-purple-100/60 border-purple-500 font-bold text-purple-900' 
                           : 'bg-indigo-900/40 border-indigo-500 font-bold text-white'
-                        : isGoogleFormsStyle
-                          ? 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                        : isGoogleFormsStyle 
+                          ? 'border-slate-200 hover:bg-slate-50 text-slate-700' 
                           : 'border-slate-700 hover:bg-slate-800 text-slate-300'
                     }`}
                   >
@@ -803,7 +848,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             </div>
           )}
 
-          {/* Section 7: Notes or questions for Dave & Kenny */}
+          {/* Section 9: Comments */}
           <div className={`p-5 rounded-xl transition-all ${
             isGoogleFormsStyle 
               ? 'bg-white border border-slate-200 shadow-sm' 
@@ -813,7 +858,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               Comments or Questions for Meeting Organizers
             </label>
             <p className={`text-xs mb-3 ${isGoogleFormsStyle ? 'text-slate-500' : 'text-slate-400'}`}>
-              Any topics you would like Dave Nkwe or Kenny Weeder to address during the session
+              Any topics for David Nkwe or Katlego Mathunywa
             </p>
             <div className="relative">
               <MessageSquare className={`absolute left-3 top-3 w-4 h-4 ${isGoogleFormsStyle ? 'text-slate-400' : 'text-slate-500'}`} />
@@ -821,7 +866,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 rows={3}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Optional questions or discussion points..."
+                placeholder="Optional notes or topics..."
                 className={`w-full pl-9 pr-3 py-2 text-sm rounded-lg border outline-none transition-all resize-none ${
                   isGoogleFormsStyle
                     ? 'bg-slate-50 border-slate-300 focus:bg-white focus:border-purple-600 text-slate-900'
@@ -847,7 +892,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Recording RSVP...</span>
+                  <span>Recording in Firebase...</span>
                 </>
               ) : (
                 <>
@@ -859,7 +904,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
             <button
               type="button"
               onClick={handleResetForm}
-              className="text-xs text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+              className="text-xs text-slate-500 hover:text-slate-800 transition-colors"
             >
               Clear form
             </button>
@@ -867,9 +912,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
         </form>
       </div>
 
-      {/* Trust & Notification Notice */}
+      {/* Trust Notice */}
       <div className="mt-4 text-center text-xs text-slate-400">
-        Notifications will be automatically routed to <strong>dave.nkwe@gmail.com</strong> and <strong>kenny.weeder71@gmail.com</strong>.
+        Stored in Cloud Firestore &bull; Routed to <strong>dave.nkwe@gmail.com</strong> and <strong>Kenny.weeder71@gmail.com</strong>.
       </div>
     </div>
   );

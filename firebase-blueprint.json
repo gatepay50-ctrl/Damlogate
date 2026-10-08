@@ -1,0 +1,144 @@
+{
+  "entities": {
+    "Registration": {
+      "title": "Registration",
+      "description": "Attendee RSVP registration submission with voting status and ward number",
+      "type": "object",
+      "properties": {
+        "fullName": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Full name of the attendee"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 160,
+          "description": "Attendee email address"
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Contact or WhatsApp phone number"
+        },
+        "organization": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Organization or company affiliation"
+        },
+        "role": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Job title or role"
+        },
+        "attendance": {
+          "type": "string",
+          "enum": ["in_person", "virtual", "declined"],
+          "description": "Attendance mode"
+        },
+        "registeredToVote": {
+          "type": "string",
+          "enum": ["Yes", "No"],
+          "description": "Did the attendee register to vote"
+        },
+        "wardNumber": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Ward number of voter registration or residence"
+        },
+        "dietary": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Dietary or catering preference"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Comments or questions for meeting organizers"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp in ISO string"
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Origin of the registration scan"
+        }
+      },
+      "required": ["fullName", "email", "attendance", "registeredToVote"]
+    },
+    "MeetingConfig": {
+      "title": "MeetingConfig",
+      "description": "Global event configuration and QR target destinations",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "date": { "type": "string", "maxLength": 30 },
+        "time": { "type": "string", "maxLength": 60 },
+        "location": { "type": "string", "maxLength": 200 },
+        "isVirtualAvailable": { "type": "boolean" },
+        "meetingLink": { "type": "string", "maxLength": 300 },
+        "notificationEmails": { "type": "array" },
+        "organizerNames": { "type": "array" },
+        "googleFormsUrl": { "type": "string", "maxLength": 300 },
+        "eotofUrl": { "type": "string", "maxLength": 200 },
+        "damlogateUrl": { "type": "string", "maxLength": 200 },
+        "whatsappNumber": { "type": "string", "maxLength": 30 },
+        "sharedAppUrl": { "type": "string", "maxLength": 300 },
+        "qrConfig": { "type": "object" }
+      },
+      "required": ["title", "date", "location"]
+    },
+    "GeneratedCode": {
+      "title": "GeneratedCode",
+      "description": "Generated QR codes or Barcodes saved in system",
+      "type": "object",
+      "properties": {
+        "codeType": { "type": "string", "enum": ["qr", "barcode"] },
+        "title": { "type": "string", "maxLength": 100 },
+        "content": { "type": "string", "maxLength": 2000 },
+        "format": { "type": "string", "maxLength": 50 },
+        "category": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": "string", "maxLength": 80 }
+      },
+      "required": ["codeType", "title", "content"]
+    },
+    "NotificationRecord": {
+      "title": "NotificationRecord",
+      "description": "Audit log of dispatches sent to organizers",
+      "type": "object",
+      "properties": {
+        "recipients": { "type": "array" },
+        "subject": { "type": "string", "maxLength": 250 },
+        "preview": { "type": "string", "maxLength": 500 },
+        "attendeeName": { "type": "string", "maxLength": 120 },
+        "attendeeEmail": { "type": "string", "maxLength": 160 },
+        "attendance": { "type": "string", "maxLength": 30 },
+        "sentAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["sent", "delivered"] }
+      },
+      "required": ["subject", "sentAt", "status"]
+    }
+  },
+  "firestore": {
+    "/meetingConfig/{configId}": {
+      "schema": "MeetingConfig",
+      "description": "Active meeting details and global QR configuration"
+    },
+    "/registrations/{registrationId}": {
+      "schema": "Registration",
+      "description": "Real-time attendee RSVPs collected via QR scan or web form"
+    },
+    "/generatedCodes/{codeId}": {
+      "schema": "GeneratedCode",
+      "description": "Custom QR and barcode generator records"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "NotificationRecord",
+      "description": "Dispatch audit records for Dave & Katlego"
+    }
+  }
+}
