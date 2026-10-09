@@ -103,6 +103,7 @@ export interface OrganizerUser {
   phone: string;
   email: string;
   role: string;
+  isAdmin?: boolean;
   avatarInitials: string;
   lastLogin?: string;
 }

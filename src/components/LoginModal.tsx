@@ -105,6 +105,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <div>
               <div className="text-base font-bold text-white">{currentUser.fullName}</div>
               <div className="text-xs text-indigo-400 font-mono mt-0.5">User ID: {currentUser.username}</div>
+              <div className="text-[11px] font-semibold mt-1">
+                {currentUser.isAdmin ? (
+                  <span className="text-emerald-400">System Administrator</span>
+                ) : (
+                  <span className="text-amber-400">Standard Member &bull; No Admin Privileges</span>
+                )}
+              </div>
             </div>
             <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
               Active Session
@@ -131,10 +138,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 onLogout();
                 onClose();
               }}
-              className="flex-1 py-3 px-4 rounded-2xl bg-rose-950/60 hover:bg-rose-900/70 text-rose-300 hover:text-white font-bold text-xs border border-rose-800/70 flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md"
+              className="flex-1 py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs border border-rose-500 flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md"
             >
-              <LogOut className="w-4 h-4" />
-              <span>Log-off</span>
+              <LogOut className="w-4 h-4 text-white" />
+              <span>Log-Off</span>
             </button>
           )}
           <button
@@ -172,8 +179,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <Lock className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white tracking-tight">Organizer Portal Login</h2>
-            <p className="text-xs text-slate-400 mt-0.5">David Nkwe &amp; Katlego Mathunywa</p>
+            <h2 className="text-lg font-bold text-white tracking-tight">Access Portal Login</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Admin: Katlego Mathunywa &bull; Member: David Nkwe</p>
           </div>
         </div>
         <button
@@ -184,10 +191,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         </button>
       </div>
 
-      {/* Section 1: AUTHORIZED ORGANIZER ACCOUNTS: */}
+      {/* Section 1: AUTHORIZED ACCOUNTS: */}
       <div className="space-y-2">
         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-          AUTHORIZED ORGANIZER ACCOUNTS:
+          AUTHORIZED ACCOUNTS:
         </span>
         <div className="grid grid-cols-2 gap-2.5">
           {/* Card 1: David Nkwe */}
@@ -202,6 +209,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           >
             <div className="font-bold text-sm text-white">David Nkwe</div>
             <div className="text-xs text-indigo-300 font-medium mt-0.5">User ID: DaveN</div>
+            <div className="text-[10px] text-amber-400 font-semibold mt-0.5">Standard Member (No Admin)</div>
             <div className="text-[11px] text-slate-400 mt-0.5">+27 76 977 5423</div>
           </button>
 
@@ -217,6 +225,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           >
             <div className="font-bold text-sm text-white">Katlego Mathunywa</div>
             <div className="text-xs text-indigo-300 font-medium mt-0.5">User ID: Kmat</div>
+            <div className="text-[10px] text-emerald-400 font-semibold mt-0.5">Administrator (Full Access)</div>
             <div className="text-[11px] text-slate-400 mt-0.5">+27 69 497 7018</div>
           </button>
         </div>
@@ -282,7 +291,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           ) : (
             <>
               <LogIn className="w-4 h-4" />
-              <span>Sign In as Organizer</span>
+              <span>
+                {selectedAccount === 'dave' ? 'Sign In as DaveN (Standard Member)' : 'Sign In as KatlegoM (Administrator)'}
+              </span>
             </>
           )}
         </button>
@@ -290,7 +301,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
       {/* Footer text */}
       <p className="text-center text-xs text-slate-500 pt-1 leading-relaxed">
-        Secure session access for meeting reporting, RSVP administration &amp; data export.
+        Authentication portal &bull; Administrator: Katlego Mathunywa &bull; Member: David Nkwe
       </p>
     </div>
   );

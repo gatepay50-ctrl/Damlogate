@@ -28,6 +28,7 @@ interface QrBarcodeGeneratorModalProps {
   onClose: () => void;
   meeting: MeetingConfig;
   currentUser?: OrganizerUser | null;
+  isDave?: boolean;
 }
 
 export const QrBarcodeGeneratorModal: React.FC<QrBarcodeGeneratorModalProps> = ({
@@ -35,20 +36,22 @@ export const QrBarcodeGeneratorModal: React.FC<QrBarcodeGeneratorModalProps> = (
   onClose,
   meeting,
   currentUser,
+  isDave = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'qr' | 'barcode' | 'saved'>('qr');
   
   // QR configuration
+  const attendeeFormUrl = typeof window !== 'undefined' ? `${window.location.origin}?view=register` : '?view=register';
   const [qrCategory, setQrCategory] = useState<'url' | 'whatsapp' | 'vcard' | 'wifi' | 'text'>('url');
-  const [qrTitle, setQrTitle] = useState('Damlogate Meeting RSVP Code');
-  const [qrContent, setQrContent] = useState(`${meeting.sharedAppUrl || window.location.origin}?view=register`);
+  const [qrTitle, setQrTitle] = useState('Damlogate Attendee Form QR Code');
+  const [qrContent, setQrContent] = useState(attendeeFormUrl);
   const [qrFgColor, setQrFgColor] = useState('#0f172a');
   const [qrBgColor, setQrBgColor] = useState('#ffffff');
   const [qrLevel, setQrLevel] = useState<'L' | 'M' | 'Q' | 'H'>('H');
   const [qrDataUrl, setQrDataUrl] = useState('');
   
   // Specific category inputs
-  const [targetUrl, setTargetUrl] = useState(`${meeting.sharedAppUrl || window.location.origin}?view=register`);
+  const [targetUrl, setTargetUrl] = useState(attendeeFormUrl);
   const [waPhone, setWaPhone] = useState('27769775423');
   const [waMessage, setWaMessage] = useState('Hello David Nkwe and Katlego Mathunywa, I am registering for the meeting.');
   const [vcardName, setVcardName] = useState('David Nkwe');
@@ -83,9 +86,13 @@ export const QrBarcodeGeneratorModal: React.FC<QrBarcodeGeneratorModalProps> = (
 
   useEffect(() => {
     if (isOpen) {
-      fetchSavedCodes();
+      if (isDave) {
+        setActiveTab('qr');
+      } else {
+        fetchSavedCodes();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, isDave]);
 
   // Update QR content based on category
   useEffect(() => {
@@ -234,6 +241,10 @@ export const QrBarcodeGeneratorModal: React.FC<QrBarcodeGeneratorModalProps> = (
   };
 
   const handleDeleteCode = async (id: string) => {
+    if (isDave) {
+      alert('Administrative privileges required to delete codes from database.');
+      return;
+    }
     if (!confirm('Delete this code from database?')) return;
     try {
       const res = await fetch(`/api/codes/${id}`, { method: 'DELETE' });
@@ -289,28 +300,32 @@ export const QrBarcodeGeneratorModal: React.FC<QrBarcodeGeneratorModalProps> = (
             <QrCode className="w-4 h-4 text-indigo-400" />
             <span>QR Code Creator</span>
           </button>
-          <button
-            onClick={() => setActiveTab('barcode')}
-            className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'barcode'
-                ? 'border-indigo-500 text-white'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Barcode className="w-4 h-4 text-blue-400" />
-            <span>Barcode 1D/2D Creator</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('saved')}
-            className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer ${
-              activeTab === 'saved'
-                ? 'border-indigo-500 text-white'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Database className="w-4 h-4 text-emerald-400" />
-            <span>Database Saved Codes ({savedCodes.length})</span>
-          </button>
+          {!isDave && (
+            <button
+              onClick={() => setActiveTab('barcode')}
+              className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'barcode'
+                  ? 'border-indigo-500 text-white'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Barcode className="w-4 h-4 text-blue-400" />
+              <span>Barcode 1D/2D Creator</span>
+            </button>
+          )}
+          {!isDave && (
+            <button
+              onClick={() => setActiveTab('saved')}
+              className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'saved'
+                  ? 'border-indigo-500 text-white'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Database className="w-4 h-4 text-emerald-400" />
+              <span>Database Saved Codes ({savedCodes.length})</span>
+            </button>
+          )}
         </div>
 
         {/* Tab Body */}
@@ -379,16 +394,15 @@ export const QrBarcodeGeneratorModal: React.FC<QrBarcodeGeneratorModalProps> = (
                       placeholder="https://..."
                       className="w-full px-3 py-2 text-xs rounded-xl bg-slate-800 border border-slate-700 text-white font-mono focus:outline-none focus:border-indigo-500"
                     />
-                    <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
                       <span>Quick presets:</span>
                       <button
                         type="button"
-                        onClick={() => setTargetUrl(`${meeting.sharedAppUrl || window.location.origin}?view=register`)}
-                        className="text-indigo-400 hover:underline cursor-pointer"
+                        onClick={() => setTargetUrl(attendeeFormUrl)}
+                        className="text-indigo-400 font-semibold hover:underline cursor-pointer bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20"
                       >
-                        RSVP Form
+                        Attendee Registration Form Link
                       </button>
-                      <span>&bull;</span>
                       <button
                         type="button"
                         onClick={() => setTargetUrl('https://www.eotof.co.za')}
@@ -629,15 +643,17 @@ export const QrBarcodeGeneratorModal: React.FC<QrBarcodeGeneratorModalProps> = (
                     </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleSaveToDatabase}
-                    disabled={isSaving}
-                    className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>{saveSuccess ? 'Saved to Firebase & Disk!' : isSaving ? 'Saving...' : 'Save QR to Database'}</span>
-                  </button>
+                  {!isDave && (
+                    <button
+                      type="button"
+                      onClick={handleSaveToDatabase}
+                      disabled={isSaving}
+                      className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{saveSuccess ? 'Saved to Firebase & Disk!' : isSaving ? 'Saving...' : 'Save QR to Database'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -788,13 +804,15 @@ export const QrBarcodeGeneratorModal: React.FC<QrBarcodeGeneratorModalProps> = (
                           }`}>
                             {code.codeType.toUpperCase()} &bull; {code.format || 'Standard'}
                           </span>
-                          <button
-                            onClick={() => handleDeleteCode(code.id)}
-                            className="p-1 text-slate-500 hover:text-rose-400 cursor-pointer"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {!isDave && (
+                            <button
+                              onClick={() => handleDeleteCode(code.id)}
+                              className="p-1 text-slate-500 hover:text-rose-400 cursor-pointer"
+                              title="Delete from database (Admin only)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                         <h4 className="font-bold text-white line-clamp-1">{code.title}</h4>
                         <p className="text-[11px] text-slate-400 font-mono mt-1 break-all line-clamp-2">

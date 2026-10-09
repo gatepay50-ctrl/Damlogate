@@ -226,7 +226,8 @@
       "fullName": "David Nkwe",
       "phone": "+27 76 977 5423",
       "email": "dave.nkwe@gmail.com",
-      "role": "Lead Meeting Host & Executive Director",
+      "role": "Standard Member (No Admin Privileges)",
+      "isAdmin": false,
       "avatarInitials": "DN",
       "lastLogin": "2026-10-08T21:26:35.302Z"
     },
@@ -237,7 +238,8 @@
       "fullName": "Katlego Mathunywa",
       "phone": "+27 69 497 7018",
       "email": "Kenny.weeder71@gmail.com",
-      "role": "Co-Organizer & Operations Lead",
+      "role": "System Administrator & Operations Lead",
+      "isAdmin": true,
       "avatarInitials": "KM",
       "lastLogin": "2026-10-08T21:09:20.204Z"
     },
@@ -248,12 +250,23 @@
       "fullName": "Katlego Mathunywa",
       "phone": "+27 69 497 7018",
       "email": "Kenny.weeder71@gmail.com",
-      "role": "Co-Organizer & Operations Lead",
+      "role": "System Administrator & Operations Lead",
+      "isAdmin": true,
       "avatarInitials": "KM",
       "lastLogin": "2026-10-08T21:26:30.093Z"
     }
   ],
   "generatedCodes": [
+    {
+      "id": "code-1791533669237-i4ap",
+      "codeType": "qr",
+      "title": "Damlogate Meeting RSVP Code",
+      "content": "https://www.damlogate.co.za, https://www.eotof.co.za",
+      "format": "Level-H Vector QR",
+      "category": "url",
+      "createdAt": "2026-10-09T08:14:29.237Z",
+      "createdBy": "Organizer System"
+    },
     {
       "id": "code-1",
       "codeType": "qr",

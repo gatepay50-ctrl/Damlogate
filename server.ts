@@ -113,6 +113,7 @@ export interface OrganizerUser {
   phone: string;
   email: string;
   role: string;
+  isAdmin?: boolean;
   avatarInitials: string;
   lastLogin?: string;
 }
@@ -172,7 +173,8 @@ const initialUsers: OrganizerUser[] = [
     fullName: 'David Nkwe',
     phone: '+27 76 977 5423',
     email: 'dave.nkwe@gmail.com',
-    role: 'Lead Meeting Host & Executive Director',
+    role: 'Standard Member (No Admin Privileges)',
+    isAdmin: false,
     avatarInitials: 'DN',
   },
   {
@@ -182,7 +184,8 @@ const initialUsers: OrganizerUser[] = [
     fullName: 'Katlego Mathunywa',
     phone: '+27 69 497 7018',
     email: 'Kenny.weeder71@gmail.com',
-    role: 'Co-Organizer & Operations Lead',
+    role: 'System Administrator & Operations Lead',
+    isAdmin: true,
     avatarInitials: 'KM',
   },
 ];
@@ -654,7 +657,8 @@ app.post('/api/auth/login', (req, res) => {
       fullName: 'David Nkwe',
       phone: '+27 76 977 5423',
       email: 'dave.nkwe@gmail.com',
-      role: 'Lead Meeting Host & Executive Director',
+      role: 'Standard Member (No Admin Privileges)',
+      isAdmin: false,
       avatarInitials: 'DN',
       lastLogin: new Date().toISOString(),
     };
@@ -666,7 +670,8 @@ app.post('/api/auth/login', (req, res) => {
       fullName: 'Katlego Mathunywa',
       phone: '+27 69 497 7018',
       email: 'Kenny.weeder71@gmail.com',
-      role: 'Co-Organizer & Operations Lead',
+      role: 'System Administrator & Operations Lead',
+      isAdmin: true,
       avatarInitials: 'KM',
       lastLogin: new Date().toISOString(),
     };
@@ -694,6 +699,7 @@ app.post('/api/auth/login', (req, res) => {
     phone: authenticatedUser.phone,
     email: authenticatedUser.email,
     role: authenticatedUser.role,
+    isAdmin: authenticatedUser.isAdmin || false,
     avatarInitials: authenticatedUser.avatarInitials,
     lastLogin: authenticatedUser.lastLogin,
   };
@@ -713,6 +719,7 @@ app.get('/api/auth/users', (_req, res) => {
     phone: u.phone,
     email: u.email,
     role: u.role,
+    isAdmin: u.isAdmin || false,
     avatarInitials: u.avatarInitials,
     lastLogin: u.lastLogin,
   }));

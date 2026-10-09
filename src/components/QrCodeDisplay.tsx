@@ -3,39 +3,42 @@ import QRCode from 'qrcode';
 import { 
   Copy, 
   Check, 
-  ExternalLink, 
-  Download, 
-  Smartphone, 
-  Edit3, 
-  Globe, 
+  Barcode,
+  Award,
   ShieldCheck,
-  MessageCircle,
-  Award
+  FileText,
+  ExternalLink
 } from 'lucide-react';
 import { MeetingConfig } from '../types';
 
 interface QrCodeDisplayProps {
   meeting: MeetingConfig;
-  onOpenMobileSimulator: () => void;
-  onOpenQrEditor: () => void;
-  onOpenFullscreenQr?: () => void;
+  onOpenMobileSimulator?: () => void;
+  onOpenQrEditor?: () => void;
+  onOpenGeneratorSuite: () => void;
+  isDave?: boolean;
 }
 
 export const QrCodeDisplay: React.FC<QrCodeDisplayProps> = ({
   meeting,
-  onOpenMobileSimulator,
-  onOpenQrEditor,
+  onOpenGeneratorSuite,
+  isDave = false,
 }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
-  const [qrSize, setQrSize] = useState<'md' | 'lg' | 'xl'>('lg');
+  const [copiedFormLink, setCopiedFormLink] = useState<boolean>(false);
   const [targetUrl, setTargetUrl] = useState<string>('');
+
+  // Attendee Form link attached to QR code
+  const attendeeFormUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}?view=register`
+    : '?view=register';
 
   const qrConfig = meeting.qrConfig || {
     mode: 'registration_hub',
     qrTitle: 'Scan to Register & Access Portals',
     qrSubtitle: 'Compatible with any cell phone model, camera, or QR scanner app',
-    badgeText: 'Exclusive Premium QR Code',
+    badgeText: 'Instant RSVP & Partner Portals',
     customUrl: '',
     googleFormsUrl: meeting.googleFormsUrl || '',
     eotofUrl: meeting.eotofUrl || 'https://www.eotof.co.za',
@@ -54,35 +57,13 @@ export const QrCodeDisplay: React.FC<QrCodeDisplayProps> = ({
   };
 
   useEffect(() => {
-    const baseOrigin = qrConfig.useSharedDomain && meeting.sharedAppUrl ? meeting.sharedAppUrl : window.location.origin;
-    let finalUrl = '';
-    if (qrConfig.mode === 'whatsapp_direct') {
-      const phone = (qrConfig.whatsappNumber || '27769775423').replace(/[^0-9]/g, '');
-      const msg = encodeURIComponent(qrConfig.whatsappPrefillMessage || `Hello David Nkwe and Katlego Mathunywa, I would like to RSVP for: ${meeting.title}`);
-      finalUrl = `https://wa.me/${phone}?text=${msg}`;
-    } else if (qrConfig.mode === 'registration_hub') {
-      const url = new URL(baseOrigin);
-      url.searchParams.set('view', 'register');
-      finalUrl = url.toString();
-    } else if (qrConfig.mode === 'google_form_direct') {
-      finalUrl = qrConfig.googleFormsUrl || `${baseOrigin}?view=register`;
-    } else if (qrConfig.mode === 'portal_links') {
-      const url = new URL(baseOrigin);
-      url.searchParams.set('view', 'portals');
-      finalUrl = url.toString();
-    } else if (qrConfig.mode === 'custom_url') {
-      finalUrl = qrConfig.customUrl || baseOrigin;
-    } else {
-      const url = new URL(baseOrigin);
-      url.searchParams.set('view', 'register');
-      finalUrl = url.toString();
-    }
-
+    // Explicitly attach the Attendee Form link to the QR code URL
+    const finalUrl = attendeeFormUrl;
     setTargetUrl(finalUrl);
 
-    // Generate high-definition vector QR code with Level-H error correction
+    // Generate high-definition vector QR code with Level-H error correction (works on all cell phone makes & models)
     QRCode.toDataURL(finalUrl, {
-      width: 460,
+      width: 480,
       margin: 2,
       color: {
         dark: qrConfig.fgColor || '#0f172a',
@@ -90,7 +71,7 @@ export const QrCodeDisplay: React.FC<QrCodeDisplayProps> = ({
       },
       errorCorrectionLevel: qrConfig.errorCorrectionLevel || 'H',
     }).then(setQrDataUrl).catch(console.error);
-  }, [meeting, qrConfig]);
+  }, [meeting, qrConfig, attendeeFormUrl]);
 
   const handleCopyLink = () => {
     if (!targetUrl) return;
@@ -99,36 +80,28 @@ export const QrCodeDisplay: React.FC<QrCodeDisplayProps> = ({
     setTimeout(() => setCopied(false), 2200);
   };
 
-  const handleDownloadQr = () => {
-    if (!qrDataUrl) return;
-    const a = document.createElement('a');
-    a.href = qrDataUrl;
-    a.download = `premium-rsvp-qr-${meeting.title.slice(0, 20).replace(/\s+/g, '-').toLowerCase()}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleCopyFormLink = () => {
+    if (!attendeeFormUrl) return;
+    navigator.clipboard.writeText(attendeeFormUrl);
+    setCopiedFormLink(true);
+    setTimeout(() => setCopiedFormLink(false), 2200);
   };
-
-  const qrPixelSize = 
-    qrSize === 'md' ? 'w-48 h-48 sm:w-56 sm:h-56' :
-    qrSize === 'lg' ? 'w-60 h-60 sm:w-72 sm:h-72' :
-    'w-72 h-72 sm:w-84 sm:h-84';
 
   const isGold = qrConfig.qrTheme === 'gold_obsidian';
   const isEmerald = qrConfig.qrTheme === 'emerald_cyber';
 
   return (
-    <div className="rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
+    <div className="rounded-2xl bg-slate-900 border border-slate-800 p-6 sm:p-7 shadow-xl relative overflow-hidden flex flex-col justify-between">
       {/* Decorative background glow */}
       <div className={`absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 rounded-full blur-3xl pointer-events-none ${
         isGold ? 'bg-amber-500/10' : isEmerald ? 'bg-emerald-500/10' : 'bg-indigo-500/10'
       }`} />
 
       <div>
-        {/* Header with Title and Editor Button */}
+        {/* Header with Title: Scan to Register & Access Portals */}
         <div className="flex items-start justify-between gap-4 mb-3">
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
               <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase flex items-center gap-1.5 ${
                 isGold 
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' 
@@ -137,180 +110,122 @@ export const QrCodeDisplay: React.FC<QrCodeDisplayProps> = ({
                   : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
               }`}>
                 <Award className="w-3.5 h-3.5 text-amber-400" />
-                {qrConfig.badgeText || 'Exclusive Premium QR Code'}
+                {qrConfig.badgeText || 'Instant RSVP & Partner Portals'}
               </span>
               <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Pure Secure &bull; Global Verified
               </span>
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-white mt-1">
-              {qrConfig.qrTitle || 'Scan from Desktop Screen'}
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Scan to Register &amp; Access Portals
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-              {qrConfig.qrSubtitle || 'Compatible with any cell phone model, camera, or QR scanner app.'}
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+              Compatible with any cell phone model, camera, or QR scanner app.
             </p>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Edit QR Code Info button */}
+        {/* Link for the Attendee Form attached on the QR Code */}
+        <div className="my-3 p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <span className="font-semibold text-slate-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-indigo-400" />
+              Attendee Form Link (Attached to QR Code):
+            </span>
+            <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              Live QR Destination
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              readOnly
+              value={attendeeFormUrl}
+              className="flex-1 bg-slate-900 border border-slate-750 px-2.5 py-1.5 rounded-lg text-indigo-300 text-xs font-mono select-all focus:outline-none"
+            />
             <button
-              onClick={onOpenQrEditor}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-white border border-indigo-500/40 text-xs font-semibold transition-all cursor-pointer shadow-sm"
-              title="Edit QR information, links, and partner portals"
+              type="button"
+              onClick={handleCopyFormLink}
+              className="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+              title="Copy Attendee Form Link"
             >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit QR</span>
+              {copiedFormLink ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedFormLink ? 'Copied' : 'Copy'}</span>
             </button>
-
-            {/* Size controls */}
-            <div className="hidden sm:flex items-center bg-slate-800/80 rounded-lg p-1 border border-slate-700/60">
-              <button
-                onClick={() => setQrSize('md')}
-                className={`px-2 py-0.5 text-[11px] font-semibold rounded cursor-pointer ${qrSize === 'md' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                title="Standard Size"
-              >
-                M
-              </button>
-              <button
-                onClick={() => setQrSize('lg')}
-                className={`px-2 py-0.5 text-[11px] font-semibold rounded cursor-pointer ${qrSize === 'lg' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                title="Large Size"
-              >
-                L
-              </button>
-              <button
-                onClick={() => setQrSize('xl')}
-                className={`px-2 py-0.5 text-[11px] font-semibold rounded cursor-pointer ${qrSize === 'xl' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                title="Extra Large"
-              >
-                XL
-              </button>
-            </div>
+            <a
+              href={attendeeFormUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white font-medium text-xs flex items-center gap-1 border border-slate-700 transition-colors cursor-pointer shrink-0"
+              title="Open Attendee Form in new tab"
+            >
+              <span>Open</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
           </div>
         </div>
 
         {/* The QR Code Card Frame */}
         <div className="flex flex-col items-center justify-center my-3">
-          <div className={`relative p-4 sm:p-5 bg-white rounded-3xl shadow-2xl border-4 flex items-center justify-center transition-all ${
+          <div className={`relative p-5 sm:p-6 bg-white rounded-3xl shadow-2xl border-4 flex items-center justify-center transition-all ${
             isGold 
               ? 'border-amber-500/60 shadow-amber-950/20' 
               : isEmerald
               ? 'border-emerald-500/60 shadow-emerald-950/20'
-              : 'border-indigo-500/30 shadow-indigo-950/20'
+              : 'border-indigo-500/40 shadow-indigo-950/20'
           }`}>
             {/* Target corners indicator */}
-            <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-amber-600"></div>
-            <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-amber-600"></div>
-            <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-amber-600"></div>
-            <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-amber-600"></div>
+            <div className="absolute top-2.5 left-2.5 w-4 h-4 border-t-2 border-l-2 border-slate-900"></div>
+            <div className="absolute top-2.5 right-2.5 w-4 h-4 border-t-2 border-r-2 border-slate-900"></div>
+            <div className="absolute bottom-2.5 left-2.5 w-4 h-4 border-b-2 border-l-2 border-slate-900"></div>
+            <div className="absolute bottom-2.5 right-2.5 w-4 h-4 border-b-2 border-r-2 border-slate-900"></div>
 
             {qrDataUrl ? (
               <img
                 src={qrDataUrl}
-                alt="Exclusive Premium QR Code"
-                className={`${qrPixelSize} object-contain transition-all duration-200 select-none`}
+                alt="Scan to Register & Access Portals"
+                className="w-64 h-64 sm:w-72 sm:h-72 object-contain transition-all duration-200 select-none"
               />
             ) : (
-              <div className={`${qrPixelSize} flex items-center justify-center text-slate-400`}>
+              <div className="w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center text-slate-400">
                 <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
               </div>
             )}
           </div>
-
-          {/* Quick instructions pill below QR */}
-          <div className="mt-3 flex items-center gap-2 text-xs text-slate-300 bg-slate-800/80 px-3.5 py-1.5 rounded-full border border-slate-700/60 max-w-md text-center">
-            <Smartphone className="w-3.5 h-3.5 text-emerald-400 shrink-0 animate-bounce" />
-            <span className="line-clamp-1">Any Model (iPhone, Samsung, Android) &bull; Camera &bull; WhatsApp Ready</span>
-          </div>
-
-          {/* Quick Links Chips (WhatsApp + Portals) */}
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-            <a
-              href="https://wa.me/27769775423?text=Hi%20David%20Nkwe%20and%20Katlego%20Mathunywa%2C%20I%20am%20confirming%20my%20Meeting%20RSVP."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-950/50 hover:bg-emerald-900/60 border border-emerald-500/40 text-xs text-emerald-300 hover:text-white transition-colors"
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span>WhatsApp Direct RSVP</span>
-            </a>
-            <a
-              href={qrConfig.eotofUrl || 'https://www.eotof.co.za'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-850 hover:bg-slate-800 border border-slate-750 text-xs text-slate-300 hover:text-white transition-colors"
-            >
-              <Globe className="w-3 h-3 text-blue-400" />
-              <span>www.eotof.co.za</span>
-            </a>
-            <a
-              href={qrConfig.damlogateUrl || 'https://www.damlogate.co.za'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-850 hover:bg-slate-800 border border-slate-750 text-xs text-slate-300 hover:text-white transition-colors"
-            >
-              <Globe className="w-3 h-3 text-emerald-400" />
-              <span>www.damlogate.co.za</span>
-            </a>
-          </div>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          {/* Test on screen / Simulator */}
-          <button
-            onClick={onOpenMobileSimulator}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
-            title="Preview what mobile scanners see right on your desktop"
-          >
-            <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Simulate Scan</span>
-          </button>
-          {/* Open in new tab */}
-          <a
-            href={targetUrl || '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 transition-colors"
-            title="Open link in a new browser tab"
-          >
-            <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
-            <span>Open Link</span>
-          </a>
-        </div>
+      {/* Action Buttons: ONLY keep QR code generator next to copy url */}
+      <div className="pt-4 border-t border-slate-800 flex items-center justify-center gap-3 sm:gap-4 w-full">
+        {/* Copy URL */}
+        <button
+          onClick={handleCopyLink}
+          className="flex-1 max-w-[220px] inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white text-xs sm:text-sm font-semibold border border-slate-700 transition-colors cursor-pointer shadow-sm"
+          title="Copy the scannable portal URL to clipboard"
+        >
+          {copied ? (
+            <>
+              <Check className="w-4 h-4 text-emerald-400" />
+              <span className="text-emerald-400 font-bold">Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-4 h-4 text-slate-400" />
+              <span>Copy URL</span>
+            </>
+          )}
+        </button>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          {/* Copy Link */}
-          <button
-            onClick={handleCopyLink}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400 font-bold">Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5 text-slate-400" />
-                <span>Copy URL</span>
-              </>
-            )}
-          </button>
-
-          {/* Download Image */}
-          <button
-            onClick={handleDownloadQr}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-colors cursor-pointer"
-            title="Save PNG for slide decks or printed signage"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Save PNG</span>
-          </button>
-        </div>
+        {/* QR Code Generator */}
+        <button
+          onClick={onOpenGeneratorSuite}
+          className="flex-1 max-w-[240px] inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white text-xs sm:text-sm font-bold shadow-lg transition-all cursor-pointer"
+          title="Open QR & Barcode Generator Suite"
+        >
+          <Barcode className="w-4 h-4 text-white" />
+          <span>QR Code Generator</span>
+        </button>
       </div>
     </div>
   );
